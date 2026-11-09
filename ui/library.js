@@ -1,0 +1,98 @@
+/* global nf, lib, state, $, esc, bgu, artBg, fmt, ago, total, lastPlayed, hours, ordered, coverOf, gameById, logoHtml, ICON, launch, select, toast, renderers, STORE_LABEL */
+// Library: games on this PC (with favorites & collections) and everything you own on your stores.
+
+function movePill() { const b = $('#libTabs [aria-selected="true"]'); if (!b) return; $('#libPill').style.width = b.offsetWidth + 'px'; $('#libPill').style.transform = `translateX(${b.offsetLeft}px)`; }
+$('#libTabs').querySelectorAll('button').forEach((b) => {
+  b.onclick = () => { state.libTab = b.dataset.t; state.filter = 'all'; $('#libTabs').querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', x === b)); movePill(); renderers.all(true); };
+});
+window.addEventListener('resize', movePill);
+
+function mineCard(g) {
+  const el = document.createElement('div');
+  el.className = 'av-card installed';
+  const cv = coverOf(g);
+  el.innerHTML = `<div class="av-img" style="${cv ? '' : `background:${artBg(null, g)}`}">${cv ? `<img class="cv-img" src="${esc(cv)}" alt="" loading="lazy" decoding="async">` : `<div class="lg">${logoHtml(g)}</div>`}
+      <span class="store mine">${esc(STORE_LABEL[g.source] || 'PC')}</span>${g.fav ? `<span class="fav-dot">${ICON.starOn}</span>` : ''}${g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
+    <div class="av-meta"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${total(g) ? fmt(total(g)) + ' played' : 'Not played yet'}${lastPlayed(g) ? ' · ' + ago(lastPlayed(g)) : ''}</small></div>
+    <div class="av-btns"><button class="btn btn-solid sm av-btn">${g.open ? 'Running' : 'Play'}</button><button class="btn btn-ghost sm icon-only av-more" aria-label="Game settings">${ICON.cog}</button></div>`;
+  el.querySelector('.av-btn').onclick = (e) => { e.stopPropagation(); launch(g); };
+  el.querySelector('.av-more').onclick = (e) => { e.stopPropagation(); openModal(g.id); };
+  el.onclick = () => select(g.id);
+  return el;
+}
+function ownedCard(o) {
+  const g = o.gameId && gameById(o.gameId);
+  const el = document.createElement('div');
+  el.className = 'av-card' + (g ? ' installed' : '');
+  el.innerHTML = `<div class="av-img">${o.cover ? `<img class="cv-img" src="${esc(epicSmall(o.cover))}" alt="" loading="lazy" decoding="async">` : `<span class="nm">${esc(o.name)}</span>`}
+      <span class="store ${o.store}">${esc(STORE_LABEL[o.store] || o.store)}</span>${g && g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
+    <div class="av-meta"><b title="${esc(o.name)}">${esc(o.name)}</b><small>${o.playMin ? hours(o.playMin) + ' on Steam' : g ? fmt(total(g)) + ' played' : 'Not installed'}${o.last ? ' · ' + ago(o.last) : ''}</small></div>
+    <div class="av-btns"><button class="btn ${g ? 'btn-solid' : 'btn-ghost'} sm av-btn">${g ? 'Play' : 'Install'}</button></div>`;
+  el.querySelector('.av-btn').onclick = async (e) => {
+    e.stopPropagation();
+    if (g) return launch(g);
+    const err = await nf.openStore(o.install);
+    toast(err || `Opening ${STORE_LABEL[o.store] || 'the store'} to install ${o.name}. It joins your library once installed.`);
+  };
+  el.onclick = () => { if (g) select(g.id); };
+  return el;
+}
+
+let avKey = '';
+// Epic's image CDN resizes on request: ask for card-sized covers
+const epicSmall = (u) => (/epicgames.com/.test(u) ? u + (u.includes('?') ? '&' : '?') + 'h=480&w=320&resize=1' : u);
+renderers.leaveAll = () => { $('#avGrid').innerHTML = ''; avKey = ''; };
+renderers.all = async (force) => {
+  requestAnimationFrame(movePill);
+  const qv = $('#avQ').value.trim().toLowerCase();
+  const sort = $('#avSort').value;
+  const grid = $('#avGrid');
+  if (state.libTab === 'mine') {
+    $('#avSort').hidden = false; $('#avRefresh').hidden = true;
+    $('#avEyebrow').textContent = 'On this PC';
+    $('#avSub').textContent = `${lib.games.length} ${lib.games.length === 1 ? 'game' : 'games'} installed and tracked · ${lib.games.filter((g) => g.fav).length} favorites · ${(lib.collections || []).length} collections`;
+    const cols = lib.collections || [];
+    if (state.filter !== 'all' && state.filter !== 'fav' && !cols.some((c) => c.id === state.filter)) state.filter = 'all';
+    const chip = (k, label, n) => `<button class="chip ${state.filter === k ? 'on' : ''}" data-f="${esc(k)}">${label}${n != null ? `<i>${n}</i>` : ''}</button>`;
+    $('#avChips').innerHTML = chip('all', 'All', lib.games.length) + chip('fav', ICON.star + ' Favorites', lib.games.filter((g) => g.fav).length)
+      + cols.map((c) => chip(c.id, esc(c.name), c.games.filter(gameById).length)).join('') + '<button class="chip add" id="chipNew">+ New collection</button>';
+    $('#avChips').querySelectorAll('[data-f]').forEach((b) => { b.onclick = () => { state.filter = b.dataset.f; renderers.all(true); }; });
+    $('#chipNew').onclick = () => {
+      $('#chipNew').outerHTML = '<input class="chip-input" id="chipInput" maxlength="40" placeholder="Collection name, then Enter">';
+      const i = $('#chipInput'); i.focus();
+      i.onkeydown = async (e) => { if (e.key === 'Escape') return renderers.all(true); if (e.key === 'Enter' && i.value.trim()) { state.filter = (await nf.colCreate(i.value.trim())) || 'all'; toast('Collection created · add games from their settings'); } };
+      i.onblur = () => setTimeout(() => renderers.all(true), 150);
+    };
+    let list = ordered(sort);
+    if (state.filter === 'fav') list = list.filter((g) => g.fav);
+    else { const c = cols.find((x) => x.id === state.filter); if (c) list = list.filter((g) => c.games.includes(g.id)); }
+    if (qv) list = list.filter((g) => g.name.toLowerCase().includes(qv));
+    const key = 'mine' + state.filter + sort + qv + list.map((g) => [g.id, coverOf(g), g.fav, !!g.open, Math.floor(total(g) / 6e4)].join()).join(';');
+    if (!force && key === avKey) return; avKey = key;
+    grid.innerHTML = list.length ? '' : `<div class="row-empty">${state.filter === 'fav' ? 'Star a game on its page to add it here.' : state.filter !== 'all' ? 'This collection is empty. Add games from their Game settings.' : 'No games match.'}</div>`;
+    const frag = document.createDocumentFragment(); list.forEach((g) => frag.appendChild(mineCard(g))); grid.appendChild(frag);
+    return;
+  }
+  // your stores
+  $('#avSort').hidden = true; $('#avRefresh').hidden = false;
+  if (!state.owned || force === 'refresh') { $('#avSub').textContent = 'Reading your store libraries…'; try { state.owned = await nf.owned(force === 'refresh'); } catch { state.owned = { accounts: [], games: [] }; } }
+  const o = state.owned, games = o.games || [];
+  const by = (s) => games.filter((x) => x.store === s).length;
+  $('#avEyebrow').textContent = (o.accounts || []).map((a) => a.store === 'steam' ? 'Steam · ' + a.name : a.name).join('  ·  ') || 'Your stores';
+  $('#avSub').textContent = games.length ? `${games.length} games you own · ${games.filter((x) => x.gameId).length} installed here` : 'No store libraries found on this PC. Sign in to Steam, Epic, GOG Galaxy, Amazon Games or itch once, then refresh.';
+  const stores = [...new Set(games.map((x) => x.store))];
+  const f = ['all', 'inst', 'not', ...stores].includes(state.filter) ? state.filter : 'all';
+  const chip = (k, label, n) => `<button class="chip ${f === k ? 'on' : ''}" data-k="${k}">${label}<i>${n}</i></button>`;
+  $('#avChips').innerHTML = chip('all', 'All', games.length) + chip('inst', 'Installed', games.filter((x) => x.gameId).length) + chip('not', 'Not installed', games.filter((x) => !x.gameId).length)
+    + stores.map((s) => chip(s, STORE_LABEL[s] || s, by(s))).join('');
+  $('#avChips').querySelectorAll('[data-k]').forEach((b) => { b.onclick = () => { state.filter = b.dataset.k; renderers.all(true); }; });
+  const list = games.filter((x) => (f === 'inst' ? x.gameId : f === 'not' ? !x.gameId : f === 'all' ? true : x.store === f) && (!qv || x.name.toLowerCase().includes(qv)))
+    .sort((a, b) => (!!b.gameId - !!a.gameId) || (b.last - a.last) || (b.playMin - a.playMin) || a.name.localeCompare(b.name));
+  const key = 'stores' + f + qv + list.length + list.map((x) => x.gameId || '').join();
+  if (!force && key === avKey) return; avKey = key;
+  grid.innerHTML = list.length ? '' : '<div class="row-empty">No games match.</div>';
+  const frag = document.createDocumentFragment(); list.forEach((x) => frag.appendChild(ownedCard(x))); grid.appendChild(frag);
+};
+$('#avQ').oninput = () => renderers.all(true);
+$('#avSort').onchange = () => renderers.all(true);
+$('#avRefresh').onclick = () => renderers.all('refresh');
