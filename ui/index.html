@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="views.css">
 <link rel="stylesheet" href="layout.css">
 <link rel="stylesheet" href="more.css">
+<link rel="stylesheet" href="polish.css">
 </head>
 <body>
 <header class="titlebar" data-tauri-drag-region>
@@ -26,6 +27,8 @@
     <button class="profile-btn" id="profileBtn" aria-label="Profile"><img id="profileImg" alt=""><span id="profileInit"></span></button>
     <button class="nav-btn" id="homeBtn" aria-label="Home" data-icon="home"></button>
     <button class="nav-btn" id="allBtn" aria-label="Library" data-icon="grid"></button>
+    <button class="nav-btn" id="newsBtn" aria-label="News" data-icon="news"></button>
+    <i class="rail-ind" id="railInd"></i>
     <div class="stack" id="rail"></div>
     <button class="nav-btn ghost" id="addBtnRail" aria-label="Add a game" data-icon="plus"></button>
     <button class="nav-btn ghost" id="searchBtn" aria-label="Search" data-icon="search"></button>
@@ -106,6 +109,7 @@
             <button class="btn btn-ghost icon-only fav-btn" id="favBtn" aria-label="Bookmark"></button>
             <button class="btn btn-ghost icon-only" id="pinBtn" aria-label="Pin to sidebar"></button>
             <button class="btn btn-ghost icon-only" id="shareGameBtn" aria-label="Share stats card" data-icon="share"></button>
+            <button class="btn btn-ghost news-btn" id="gNewsBtn" hidden><span>News</span><i class="nbadge" id="gNewsBadge" hidden></i><span class="ic" data-icon="news"></span></button>
             <button class="btn btn-ghost" id="setBtn"><span>Game settings</span><span class="ic set-ic"></span></button>
             <button class="btn btn-solid" id="playBtn"><span id="playTxt">Play</span><span class="ic" data-icon="play"></span></button>
           </div>
@@ -127,10 +131,6 @@
           <div class="d-live" id="dLive" hidden></div>
           <ol class="d-items" id="dItems"></ol>
         </div>
-        <div class="panel news-panel" id="dNewsPanel" hidden>
-          <div class="row-head"><h2>News</h2><span class="muted" id="dNewsSrc"></span></div>
-          <div class="news" id="dNews"></div>
-        </div>
       </div>
     </section>
 
@@ -145,6 +145,7 @@
           <p class="desc" id="sgDesc"></p>
           <div class="sg-progress" id="sgProg" hidden><div class="bar"><i id="sgBar"></i></div><div class="sg-prog-tx"><b id="sgPct"></b><span id="sgRate"></span></div></div>
           <div class="actions">
+            <button class="btn btn-ghost news-btn" id="sgNewsBtn" hidden><span>News</span><i class="nbadge" id="sgNewsBadge" hidden></i><span class="ic" data-icon="news"></span></button>
             <button class="btn btn-ghost" id="sgPage"><span>Store page</span><span class="ic" data-icon="ext"></span></button>
             <button class="btn btn-solid" id="sgInstall"><span id="sgInstallTxt">Install</span><span class="ic" data-icon="download"></span></button>
           </div>
@@ -158,10 +159,6 @@
         <div class="panel">
           <div class="row-head"><h2>Screenshots</h2></div>
           <div class="sg-shots" id="sgShots"></div>
-        </div>
-        <div class="panel news-panel" id="sgNewsPanel">
-          <div class="row-head"><h2>News</h2><span class="muted" id="sgNewsSrc"></span></div>
-          <div class="news" id="sgNews"></div>
         </div>
       </div>
     </section>
@@ -217,6 +214,85 @@
 
     <!-- ================= YEAR IN REVIEW (one screen) ================= -->
     <section class="view review2" id="reviewView" hidden></section>
+
+    <!-- ================= NEWS (scrolls) ================= -->
+    <section class="view page news-page" id="newsView" hidden>
+      <header class="page-head">
+        <div><p class="eyebrow">For the games you play</p><h1>News</h1><p class="sub" id="nwSub"></p></div>
+        <button class="btn btn-ghost sm" id="nwRefresh"><span>Refresh</span><span class="ic" data-icon="refresh"></span></button>
+      </header>
+      <div class="nw-chips" id="nwChips"></div>
+      <div class="nw-upcoming" id="nwUpcoming"></div>
+      <div class="nw-grid" id="nwGrid"></div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section class="view settings-page" id="settingsView" hidden>
+      <aside class="st-nav">
+        <h1>Settings</h1>
+        <nav id="stNav">
+          <button data-s="accounts" class="on"><span class="ic" data-icon="link"></span>Accounts</button>
+          <button data-s="library"><span class="ic" data-icon="grid"></span>Library</button>
+          <button data-s="discord"><span class="ic" data-icon="chat"></span>Discord</button>
+          <button data-s="general"><span class="ic" data-icon="power"></span>Startup</button>
+          <button data-s="updates"><span class="ic" data-icon="refresh"></span>Updates</button>
+        </nav>
+        <p class="st-ver" id="sVersionSide"></p>
+      </aside>
+      <div class="st-body" id="stBody">
+        <section class="st-sec" id="st-accounts">
+          <header><h2>Accounts</h2><p>Nightfall finds the stores signed in on this PC by itself. There's nothing to log in to.</p></header>
+          <div class="st-card" id="sStores"></div>
+          <div class="st-card">
+            <label class="s-row toggle"><div><b>Add newly installed games automatically</b><small>Steam and Epic games you install show up in your library by themselves.</small></div><input type="checkbox" id="sAutoAdd"></label>
+          </div>
+          <div class="st-card">
+            <div class="s-row"><div><b>Steam friends</b><small id="sFriendsState">Checking…</small></div><span class="tag-ok" id="sFriendsTag">Automatic</span></div>
+            <details class="st-adv"><summary>Advanced: use a Steam Web API key</summary>
+              <p class="help">Optional. Friends already work without it. A key reads the list straight from Steam's servers, which is faster with a lot of friends.</p>
+              <div class="row"><input id="sSteamKey" type="password" spellcheck="false" autocomplete="off" placeholder="Steam Web API key"><button class="btn btn-ghost sm" id="sKeyLink"><span>Get a key</span></button></div>
+            </details>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-library">
+          <header><h2>Library</h2><p>How your games are shown.</p></header>
+          <div class="st-card">
+            <label class="s-row toggle"><div><b>Show filters in the library</b><small>Bookmarks, collections and store chips above your games.</small></div><input type="checkbox" id="sFilters"></label>
+            <div class="s-row"><div><b>Game settings icon</b><small>On game cards and game pages. With "None", right-click a card to open its settings.</small></div>
+              <div class="seg-mini" id="sSetIcon"><button data-v="cog" aria-label="Gear"></button><button data-v="sliders" aria-label="Sliders"></button><button data-v="pencil" aria-label="Pencil"></button><button data-v="dots" aria-label="Dots"></button><button data-v="none">None</button></div></div>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-discord">
+          <header><h2>Discord</h2><p>Show the game you're playing on your Discord profile.</p></header>
+          <div class="st-card">
+            <label class="s-row toggle"><div><b>Rich Presence</b><small id="sDiscordState">Off</small></div><input type="checkbox" id="sDiscord"></label>
+            <div class="s-field">
+              <label for="sClientId">Discord Application ID</label>
+              <div class="row"><input id="sClientId" type="text" inputmode="numeric" placeholder="e.g. 1234567890123456789" spellcheck="false"><button class="btn btn-ghost sm" id="sTest"><span>Send a test</span></button><button class="btn btn-ghost sm" id="sDevLink"><span>Developer portal</span><span class="ic" data-icon="ext"></span></button></div>
+              <ol class="st-steps"><li>Open the developer portal and create a <b>New Application</b>. Its name is what friends see.</li><li>On <b>General Information</b>, copy the <b>Application ID</b> (not the Public Key).</li><li>Paste it here and keep the Discord desktop app open.</li></ol>
+            </div>
+            <label class="s-row toggle"><div><b>Show "In Nightfall" when not playing</b><small>Lets friends see you're picking a game.</small></div><input type="checkbox" id="sIdle"></label>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-general">
+          <header><h2>Startup</h2><p>Keep tracking reliable.</p></header>
+          <div class="st-card">
+            <label class="s-row toggle"><div><b>Start with Windows</b><small>Opens hidden in the tray so tracking never misses a session.</small></div><input type="checkbox" id="sLogin"></label>
+            <label class="s-row toggle"><div><b>Keep tracking when the window is closed</b><small>Closing hides Nightfall to the tray instead of quitting.</small></div><input type="checkbox" id="sTray"></label>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-updates">
+          <header><h2>Updates</h2><p>Signed updates from GitHub, installed in one click.</p></header>
+          <div class="st-card">
+            <div class="s-row"><div><b id="sVersion">Nightfall</b><small id="sUpdate">—</small></div><button class="btn btn-ghost sm" id="sCheck"><span>Check now</span></button></div>
+          </div>
+        </section>
+      </div>
+    </section>
   </main>
 
   <!-- search -->
@@ -268,7 +344,16 @@
     </div>
   </div>
 
-  <div class="dl-pop" id="dlPop" hidden><h4>Downloads</h4><div id="dlList"></div></div>
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="dlDrawer" aria-label="Downloads" hidden>
+    <header><div><h3>Downloads</h3><small id="dlSum"></small></div><button class="x" id="dlClose" aria-label="Close" data-icon="x"></button></header>
+    <div class="dr-body" id="dlList"></div>
+    <footer><button class="btn btn-ghost sm" id="dlSteam"><span>Open Steam downloads</span><span class="ic" data-icon="ext"></span></button></footer>
+  </aside>
+  <aside class="drawer" id="newsDrawer" aria-label="News" hidden>
+    <header><div><h3 id="ndTitle">News</h3><small id="ndSrc"></small></div><button class="x" id="ndClose" aria-label="Close" data-icon="x"></button></header>
+    <div class="dr-body news" id="ndBody"></div>
+  </aside>
 
   <!-- Connect All -->
   <div class="modal-bg" id="scan" hidden>
@@ -298,40 +383,6 @@
     </div>
   </div>
 
-  <!-- settings -->
-  <div class="modal-bg" id="settings" hidden>
-    <div class="modal settings" role="dialog" aria-modal="true" aria-labelledby="sTitle">
-      <header><h3 id="sTitle">Settings</h3><button class="x" id="sClose" aria-label="Close" data-icon="x"></button></header>
-
-      <h4 class="s-h">Stores</h4>
-      <div id="sStores"></div>
-      <label class="s-row toggle"><div><b>Add newly installed games automatically</b><small>Steam and Epic games you install show up in your library by themselves.</small></div><input type="checkbox" id="sAutoAdd"></label>
-
-      <h4 class="s-h">Library</h4>
-      <label class="s-row toggle"><div><b>Show filters in the library</b><small>Bookmarks, collections and store chips above your games.</small></div><input type="checkbox" id="sFilters"></label>
-      <div class="s-row"><div><b>Game settings icon</b><small>The button on game cards and game pages. "None" hides it on cards: right-click a card instead.</small></div>
-        <div class="seg-mini" id="sSetIcon"><button data-v="cog" aria-label="Gear"></button><button data-v="sliders" aria-label="Sliders"></button><button data-v="pencil" aria-label="Pencil"></button><button data-v="dots" aria-label="Dots"></button><button data-v="none">None</button></div></div>
-
-      <h4 class="s-h">Friends</h4>
-      <label for="sSteamKey" class="s-label">Steam Web API key</label>
-      <div class="row"><input id="sSteamKey" type="password" spellcheck="false" autocomplete="off" placeholder="Paste your key to see what your Steam friends play"><button class="btn btn-ghost sm" id="sKeyLink"><span>Get a key</span></button></div>
-      <p class="help" id="sFriendsState">Your key stays on this PC and is only sent to Steam.</p>
-
-      <h4 class="s-h">Discord</h4>
-      <label class="s-row toggle"><div><b>Show what I'm playing on Discord</b><small id="sDiscordState">Off</small></div><input type="checkbox" id="sDiscord"></label>
-      <label for="sClientId" class="s-label">Discord Application ID</label>
-      <div class="row"><input id="sClientId" type="text" inputmode="numeric" placeholder="e.g. 1234567890123456789" spellcheck="false"><button class="btn btn-ghost sm" id="sTest"><span>Test</span></button><button class="btn btn-ghost sm" id="sDevLink"><span>Open portal</span></button></div>
-      <p class="help">On discord.com/developers/applications: New Application → name it (that name shows on your profile) → <b>General Information</b> → copy <b>Application ID</b>. Not your user ID, server ID or Public Key. The Discord desktop app must be open.</p>
-      <label class="s-row toggle"><div><b>Show "In Nightfall" when not playing</b><small>Lets friends see you're picking a game.</small></div><input type="checkbox" id="sIdle"></label>
-
-      <h4 class="s-h">General</h4>
-      <label class="s-row toggle"><div><b>Start with Windows</b><small>Opens hidden in the tray so tracking never misses a session.</small></div><input type="checkbox" id="sLogin"></label>
-      <label class="s-row toggle"><div><b>Keep tracking when the window is closed</b><small>Closing hides Nightfall to the tray instead of quitting.</small></div><input type="checkbox" id="sTray"></label>
-
-      <h4 class="s-h">Updates</h4>
-      <div class="s-row"><div><b id="sVersion">Nightfall</b><small id="sUpdate">—</small></div><button class="btn btn-ghost sm" id="sCheck"><span>Check now</span></button></div>
-    </div>
-  </div>
 
   <div class="upd-bar" id="updBar" hidden><span id="updTxt"></span><button class="btn btn-solid sm" id="updGo"><span>Update now</span></button></div>
   <div class="toast" id="toast" role="status"></div>
@@ -346,5 +397,6 @@
 <script src="settings.js"></script>
 <script src="store.js"></script>
 <script src="profile.js"></script>
+<script src="news.js"></script>
 </body>
 </html>

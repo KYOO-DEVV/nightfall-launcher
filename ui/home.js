@@ -56,19 +56,16 @@ async function loadFriends(force) {
 async function renderFriends() {
   const d = await loadFriends(false);
   const el = $('#frList');
-  if (d.error === 'nokey') {
-    $('#frSub').textContent = 'Steam';
-    el.innerHTML = `<div class="fr-empty"><p>See which Steam friends are online and what they're playing.</p><button class="btn btn-ghost sm" id="frSetup"><span>Add your Steam API key</span></button></div>`;
-    $('#frSetup').onclick = () => renderers.openSettings && renderers.openSettings('#sSteamKey');
-    return;
-  }
-  if (d.error) { $('#frSub').textContent = 'Steam'; el.innerHTML = `<div class="fr-empty"><p>${esc(d.error)}</p></div>`; return; }
-  const f = d.friends || [];
+  const msg = { nosteam: "Sign in to the Steam app on this PC and your friends show up here.", nofriends: 'No friends in your Steam app yet.' };
+  if (d.error) { $('#frSub').textContent = 'Steam'; el.innerHTML = `<div class="fr-empty"><p>${esc(msg[d.error] || d.error)}</p></div>`; return; }
+  const f = (d.friends || []).filter((x) => x.state !== 'unknown');
   const on = f.filter((x) => x.state !== 'offline');
   $('#frSub').textContent = `${on.length} online · ${f.filter((x) => x.state === 'ingame').length} playing`;
-  el.innerHTML = f.length ? f.slice(0, 40).map((x) => `<div class="fr ${x.state}">
+  const label = (x) => x.state === 'ingame' ? esc(x.game || 'In a game') + (x.detail ? ' · ' + esc(x.detail) : '')
+    : x.state === 'offline' ? (x.lastOff ? 'Last online ' + ago(x.lastOff) : 'Offline') : x.state[0].toUpperCase() + x.state.slice(1);
+  el.innerHTML = f.length ? f.slice(0, 40).map((x, i) => `<div class="fr ${x.state}" style="--i:${Math.min(i, 12)}">
       <span class="av" style="${x.avatar ? `background-image:${bgu(x.avatar)}` : ''}"><i></i></span>
-      <span class="fr-tx"><b>${esc(x.name)}</b><small>${x.state === 'ingame' ? esc(x.game || 'In a game') : x.state === 'offline' ? (x.lastOff ? 'Last online ' + ago(x.lastOff) : 'Offline') : x.state[0].toUpperCase() + x.state.slice(1)}</small></span>
+      <span class="fr-tx"><b>${esc(x.name)}</b><small>${label(x)}</small></span>
     </div>`).join('') : '<div class="fr-empty"><p>No Steam friends yet.</p></div>';
 }
 

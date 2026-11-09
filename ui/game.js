@@ -1,4 +1,4 @@
-/* global nf, lib, state, $, esc, bgu, artBg, fmt, ago, clock, total, lastPlayed, hours, heroOf, coverOf, fallbackBg, ICON, launch, toast, renderers, DAY, now, openModal, featured, paintBookmark */
+/* global drawer, nf, lib, state, $, esc, bgu, artBg, fmt, ago, clock, total, lastPlayed, hours, heroOf, coverOf, fallbackBg, ICON, launch, toast, renderers, DAY, now, openModal, featured, paintBookmark */
 // Game page: hero on top, play history / sessions or matches / experiences / news underneath — one screen.
 
 let shownHero = '';
@@ -54,13 +54,17 @@ async function loadNews(q, key) {
   return f;
 }
 const shortDate = (t) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
-function renderNewsInto(el, f) {
+function renderNewsInto(el, f, rich) {
   const items = (f && f.items) || [];
   const b = f && f.banner && f.banner.image ? f.banner : null;
   el.innerHTML = (b ? `<button class="news-banner" ${b.url ? `data-url="${esc(b.url)}"` : ''} style="background-image:${bgu(b.image)}"><span>${esc(b.title)}</span></button>` : '')
     + (f && f.next ? `<div class="news-next">${ICON.clock}<span>${esc(f.next)}</span></div>` : '')
-    + `<ol class="news-list">${items.slice(0, 14).map((n) => `<li><button ${n.url ? `data-url="${esc(n.url)}"` : ''} title="${esc(n.body || n.title)}">
-        <span class="ntag ${n.tag}">${TAG[n.tag] || 'News'}</span><b>${esc(n.title)}</b><small>${shortDate(n.date)}</small></button></li>`).join('')}</ol>`;
+    + (rich ? `<ol class="news-cards">${items.slice(0, 24).map((n, i) => `<li style="--i:${Math.min(i, 10)}"><button ${n.url ? `data-url="${esc(n.url)}"` : ''}>
+        ${n.image ? `<span class="nc-img" style="background-image:${bgu(n.image)}"></span>` : ''}
+        <span class="nc-tx"><span class="nc-meta"><span class="ntag ${n.tag}">${TAG[n.tag] || 'News'}</span>${n.date ? `<small>${shortDate(n.date)}</small>` : ''}</span>
+        <b>${esc(n.title)}</b>${n.body ? `<p>${esc(n.body.slice(0, 160))}</p>` : ''}</span></button></li>`).join('')}</ol>`
+      : `<ol class="news-list">${items.slice(0, 14).map((n) => `<li><button ${n.url ? `data-url="${esc(n.url)}"` : ''} title="${esc(n.body || n.title)}">
+        <span class="ntag ${n.tag}">${TAG[n.tag] || 'News'}</span><b>${esc(n.title)}</b><small>${shortDate(n.date)}</small></button></li>`).join('')}</ol>`);
   el.querySelectorAll('[data-url]').forEach((x) => { x.onclick = async () => { const err = await nf.openLink(x.dataset.url); if (err) toast(err); }; });
   el.querySelectorAll('button:not([data-url])').forEach((x) => { x.classList.add('static'); });
 }
@@ -141,19 +145,32 @@ async function renderDetail(g, force) {
     $('#dItems').querySelectorAll('[data-url]').forEach((b) => { b.onclick = () => nf.openLink(b.dataset.url); });
   }
   layoutDetail();
-  // news for games that have a feed (HoYoverse, Fortnite, Riot, Steam)
+  // news lives in a side drawer, opened from the hero (HoYoverse, Fortnite, Riot, Steam)
   const f = await loadNews({ id: g.id }, 'g:' + g.id);
   if (detailFor !== g.id || state.view !== 'game') return;
-  const has = !!(f && ((f.items && f.items.length) || f.banner));
-  $('#dNewsPanel').hidden = !has;
-  if (has) { $('#dNewsSrc').textContent = f.source; renderNewsInto($('#dNews'), f); }
-  layoutDetail();
+  setNewsButton($('#gNewsBtn'), $('#gNewsBadge'), f, g.name);
 }
+/* News button + drawer, shared with the store page */
+function setNewsButton(btn, badge, f, title) {
+  const has = !!(f && ((f.items && f.items.length) || f.banner));
+  btn.hidden = !has;
+  if (!has) return;
+  const fresh = (f.items || []).filter((n) => n.date && now() - n.date < 7 * DAY).length;
+  badge.hidden = !fresh; badge.textContent = fresh;
+  btn.onclick = () => openNewsDrawer(f, title);
+}
+function openNewsDrawer(f, title) {
+  $('#ndTitle').textContent = title + ' news';
+  $('#ndSrc').textContent = f.source ? 'From ' + f.source : '';
+  renderNewsInto($('#ndBody'), f, true);
+  drawer('#newsDrawer', true);
+}
+$('#ndClose').onclick = () => drawer('#newsDrawer', false);
 
 renderers.game = (force) => {
   const g = featured();
   if (!g) return;
-  if (force) renderDetail.auto = false;
+  if (force) { renderDetail.auto = false; if (g.id !== renderers.game.last) $('#gNewsBtn').hidden = true; renderers.game.last = g.id; }
   renderHero(g); renderHeroLive(g);
   renderDetail(g, force);
 };

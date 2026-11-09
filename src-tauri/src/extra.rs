@@ -170,6 +170,7 @@ pub fn allowed_news_link(u: &str) -> bool {
 
 /* =================== downloads in progress =================== */
 #[derive(Serialize, Clone, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Download {
     pub store: String,
     pub key: String,
@@ -180,6 +181,24 @@ pub struct Download {
     /// bytes per second, averaged over the last samples
     pub rate: f64,
     pub state: String,
+    /// "downloading" (network) or "installing" (writing / unpacking to disk)
+    pub phase: String,
+    /// install or update
+    pub kind: String,
+    pub dl_done: u64,
+    pub dl_total: u64,
+    pub disk_done: u64,
+    pub disk_total: u64,
+    pub peak: f64,
+    pub avg: f64,
+    /// bytes/s, one point every ~2 s over the last 2 minutes
+    pub history: Vec<f64>,
+    pub path: Option<String>,
+    pub drive: Option<String>,
+    pub free: u64,
+    pub disk_size: u64,
+    pub cover: Option<String>,
+    pub header: Option<String>,
 }
 static SAMPLES: Lazy<Mutex<HashMap<String, Vec<(i64, u64)>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 fn acf_field(t: &str, k: &str) -> Option<String> {
@@ -206,17 +225,22 @@ pub fn downloads() -> Vec<Download> {
             let f = e.file_name().to_string_lossy().to_string();
             if !f.starts_with("appmanifest_") || !f.ends_with(".acf") { continue }
             let Ok(t) = fs::read_to_string(e.path()) else { continue };
-            let flags: u32 = acf_field(&t, "StateFlags").and_then(|x| x.parse().ok()).unwrap_or(4);
-            let to_dl: u64 = acf_field(&t, "BytesToDownload").and_then(|x| x.parse().ok()).unwrap_or(0);
-            let dl: u64 = acf_field(&t, "BytesDownloaded").and_then(|x| x.parse().ok()).unwrap_or(0);
-            let to_st: u64 = acf_field(&t, "BytesToStage").and_then(|x| x.parse().ok()).unwrap_or(0);
-            let st: u64 = acf_field(&t, "BytesStaged").and_then(|x| x.parse().ok()).unwrap_or(0);
+            let num = |k: &str| -> u64 { acf_field(&t, k).and_then(|x| x.parse().ok()).unwrap_or(0) };
+            let flags = num("StateFlags") as u32;
+            let (to_dl, dl, to_st, st) = (num("BytesToDownload"), num("BytesDownloaded"), num("BytesToStage"), num("BytesStaged"));
             if flags == 4 || (to_dl == 0 && to_st == 0) || (dl >= to_dl && st >= to_st) { continue }
-            let appid: i64 = acf_field(&t, "appid").and_then(|x| x.parse().ok()).unwrap_or(0);
+            let appid = num("appid") as i64;
             // flag 1024 = update running, 512 = suspended / queued
             let state = if flags & 1024 != 0 || flags & 1048576 != 0 { "downloading" } else if flags & 512 != 0 { "paused" } else { "queued" };
+            let dir = lib.join("steamapps").join("common").join(acf_field(&t, "installdir").unwrap_or_default());
+            let is_update = num("SizeOnDisk") > 0 && acf_field(&t, "LastUpdated").map(|x| x != "0").unwrap_or(false);
             out.push(Download { store: "steam".into(), key: format!("steam:{}", appid), appid: Some(appid), name: acf_field(&t, "name").unwrap_or_default(),
-                done: if to_dl > 0 { dl } else { st }, total: if to_dl > 0 { to_dl } else { to_st }, state: state.into(), ..Default::default() });
+                done: if to_dl > 0 { dl } else { st }, total: if to_dl > 0 { to_dl } else { to_st },
+                dl_done: dl, dl_total: to_dl, disk_done: st, disk_total: to_st, kind: if is_update { "update" } else { "install" }.into(),
+                phase: if to_dl > 0 && dl < to_dl { "downloading" } else { "installing" }.into(),
+                cover: Some(format!("https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/library_600x900.jpg", appid)),
+                header: Some(format!("https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/header.jpg", appid)),
+                path: Some(dir.to_string_lossy().to_string()), state: state.into(), ..Default::default() });
         }
     }
     // Epic: installs in progress have a Pending manifest; count what's been written so far
@@ -230,20 +254,35 @@ pub fn downloads() -> Vec<Download> {
         let done = dir_size(Path::new(loc), &mut budget);
         let total = v["InstallSize"].as_u64().unwrap_or(0);
         out.push(Download { store: "epic".into(), key: format!("epic:{}", v["CatalogNamespace"].as_str().unwrap_or("")), name: v["DisplayName"].as_str().unwrap_or("").to_string(),
-            done, total, state: "downloading".into(), ..Default::default() });
+            done, total, disk_done: done, disk_total: total, kind: "install".into(), phase: "downloading".into(), path: Some(loc.to_string()), state: "downloading".into(), ..Default::default() });
     }
-    // speed from the last ~10 seconds of samples
+    // free space on each target drive
+    let disks = sysinfo::Disks::new_with_refreshed_list();
+    for d in out.iter_mut() {
+        let p = d.path.clone().unwrap_or_default().to_lowercase();
+        if let Some(k) = disks.list().iter().filter(|k| p.starts_with(&k.mount_point().to_string_lossy().to_lowercase())).max_by_key(|k| k.mount_point().as_os_str().len()) {
+            d.drive = Some(k.mount_point().to_string_lossy().trim_end_matches('\\').to_string());
+            d.free = k.available_space();
+            d.disk_size = k.total_space();
+        }
+    }
+    // speed from the last ~10 seconds, a 2-minute history for the graph, and the peak
     let now = now_ms();
     let mut s = SAMPLES.lock().unwrap();
     s.retain(|k, _| out.iter().any(|d| &d.key == k));
     for d in out.iter_mut() {
         let v = s.entry(d.key.clone()).or_default();
         v.push((now, d.done));
-        v.retain(|x| now - x.0 <= 12_000);
-        if let (Some(a), Some(b)) = (v.first(), v.last()) { if b.0 > a.0 && b.1 >= a.1 { d.rate = (b.1 - a.1) as f64 * 1000.0 / (b.0 - a.0) as f64 } }
+        v.retain(|x| now - x.0 <= 120_000);
+        let recent: Vec<&(i64, u64)> = v.iter().filter(|x| now - x.0 <= 12_000).collect();
+        if let (Some(a), Some(b)) = (recent.first(), recent.last()) { if b.0 > a.0 && b.1 >= a.1 { d.rate = (b.1 - a.1) as f64 * 1000.0 / (b.0 - a.0) as f64 } }
+        d.history = v.windows(2).map(|w| if w[1].0 > w[0].0 && w[1].1 >= w[0].1 { (w[1].1 - w[0].1) as f64 * 1000.0 / (w[1].0 - w[0].0) as f64 } else { 0.0 }).collect();
+        d.peak = d.history.iter().cloned().fold(d.rate, f64::max);
+        let sum: f64 = d.history.iter().sum();
+        d.avg = if d.history.is_empty() { 0.0 } else { sum / d.history.len() as f64 };
         if d.state == "queued" && d.rate > 0.0 { d.state = "downloading".into() }
         // no bytes for a while: Steam / Epic paused it or it's waiting (disk, network, another download)
-        let span = v.last().map(|x| x.0).unwrap_or(now) - v.first().map(|x| x.0).unwrap_or(now);
+        let span = recent.last().map(|x| x.0).unwrap_or(now) - recent.first().map(|x| x.0).unwrap_or(now);
         if d.state == "downloading" && d.rate == 0.0 && span >= 8000 { d.state = "paused".into() }
     }
     out

@@ -1,23 +1,26 @@
-/* global nf, lib, state, $, esc, toast, renderers, modal, STORE_LABEL, ICON */
-// Settings, Discord status, update banner.
+/* global nf, lib, state, $, esc, toast, renderers, go, STORE_LABEL, ICON */
+// Settings page (its own view, with a section list on the left), Discord status and the update banner.
 
 const DISCORD_TEXT = {
   off: 'Off',
-  noid: 'Paste your Discord Application ID below to turn it on.',
-  waiting: "Waiting for Discord… make sure the Discord desktop app is open.",
-  on: 'Connected to Discord ✓',
+  noid: 'Add your Discord Application ID below to turn it on.',
+  waiting: 'Waiting for Discord. Make sure the Discord desktop app is open.',
+  on: 'Connected to Discord',
 };
 function discordText(s) {
   if (DISCORD_TEXT[s]) return DISCORD_TEXT[s];
   if (/^error:/.test(s || '')) {
     const m = s.slice(6);
-    if (/invalid client id/i.test(m)) return "Discord says this isn't a valid Application ID. Copy the Application ID from your app's General Information page — not your user ID, server ID or Public Key.";
+    if (/invalid client id/i.test(m)) return "Discord says this isn't a valid Application ID. Copy the Application ID from your app's General Information page, not your user ID, server ID or Public Key.";
     return 'Discord: ' + m;
   }
   return '—';
 }
-async function openSettings(focus) {
-  modal('#settings', true);
+const STORE_COLOR = { steam: 'linear-gradient(150deg,#1e3a5c,#111d2b)', epic: 'linear-gradient(150deg,#3a3a3a,#161616)', gog: 'linear-gradient(150deg,#7b3fc4,#3d1d66)', amazon: 'linear-gradient(150deg,#2c3c52,#141c27)', itch: 'linear-gradient(150deg,#ff6b6b,#c43c3c)' };
+const STORE_MARK = { steam: 'S', epic: 'E', gog: 'G', amazon: 'a', itch: 'i' };
+
+async function openSettings(section) {
+  go('settings');
   const s = await nf.settings();
   $('#sAutoAdd').checked = s.autoAddInstalled !== false;
   $('#sDiscord').checked = !!s.discordEnabled;
@@ -29,27 +32,65 @@ async function openSettings(focus) {
   $('#sFilters').checked = !!s.showFilters;
   paintIconChoice(s.settingsIcon || 'cog');
   renderSettingsLive();
-  if (focus) setTimeout(() => $(focus).focus(), 50);
-  if (!state.owned) { try { state.owned = await nf.owned(false); } catch { state.owned = { accounts: [], games: [] }; } }
+  if (typeof section === 'string') jumpTo(section);
+  renderStores();
+  renderFriendsState();
+}
+renderers.openSettings = (focus) => openSettings(focus === '#sSteamKey' ? 'accounts' : focus);
+renderers.settings = () => renderSettingsLive();
+
+async function renderStores() {
+  if (!state.owned) { $('#sStores').innerHTML = '<div class="st-acct"><div class="st-acct-tx"><b>Looking for your stores…</b></div></div>'; try { state.owned = await nf.owned(false); } catch { state.owned = { accounts: [], games: [] }; } }
   const acc = state.owned.accounts || [];
+  const p = lib.profile || {};
   $('#sStores').innerHTML = ['steam', 'epic', 'gog', 'amazon', 'itch'].map((k) => {
     const a = acc.find((x) => x.store === k);
-    return `<div class="s-row"><div><b>${STORE_LABEL[k]}</b><small>${a ? (k === 'steam' ? `Signed in as ${esc(a.name)} · ` : '') + `${a.games} games · read from the ${STORE_LABEL[k]} app on this PC` : `Not found. Sign in to the ${STORE_LABEL[k]} app on this PC once, then reopen Settings.`}</small></div>${a ? '<span class="tag-ok">Connected</span>' : '<span class="tag-off">Not found</span>'}</div>`;
+    const who = a && k === 'steam' ? `Signed in as <b>${esc(a.name)}</b> · ` : '';
+    const mark = k === 'steam' && a && p.avatar && !p.customAvatar ? `<img src="${esc(p.avatar)}" alt="">` : STORE_MARK[k];
+    return `<div class="st-acct ${a ? 'ok' : 'off'}"><span class="st-logo" style="background:${STORE_COLOR[k]}">${mark}</span>
+      <div class="st-acct-tx"><b>${STORE_LABEL[k]}</b><small>${a ? `${who}${a.games} games · found automatically` : `Not on this PC. Sign in to the ${STORE_LABEL[k]} app once and it's picked up by itself.`}</small></div>
+      ${a ? '<span class="tag-ok">Connected</span>' : '<span class="tag-off">Not found</span>'}</div>`;
   }).join('');
 }
-renderers.openSettings = openSettings;
+async function renderFriendsState(force) {
+  const st = $('#sFriendsState'), tag = $('#sFriendsTag');
+  const r = await nf.friends(!!force).catch(() => ({ error: 'Something went wrong.' }));
+  const set = (text, label, ok) => { st.textContent = text; tag.textContent = label; tag.className = ok ? 'tag-ok' : 'tag-off'; };
+  if (r.error === 'nosteam') return set('Sign in to the Steam app on this PC to see your friends.', 'Not available');
+  if (r.error === 'nofriends') return set('No friends found in your Steam app yet.', 'Automatic');
+  if (r.error) return set(r.error, 'Error');
+  const f = r.friends || [];
+  set(`${f.length} friends · ${f.filter((x) => x.state !== 'offline' && x.state !== 'unknown').length} online now · ${r.via === 'key' ? 'read with your API key' : 'read from your Steam app, no key needed'}`, r.via === 'key' ? 'API key' : 'Automatic', true);
+}
 function renderSettingsLive() {
-  if ($('#settings').hidden) return;
+  if (state.view !== 'settings') return;
   $('#sDiscordState').textContent = discordText(lib.presence);
   $('#sDiscordState').classList.toggle('err', /^error:/.test(lib.presence || ''));
+  $('#sDiscordState').classList.toggle('ok', lib.presence === 'on');
   $('#sVersion').textContent = 'Nightfall ' + (lib.version || '');
+  $('#sVersionSide').textContent = 'Nightfall ' + (lib.version || '');
   const u = lib.update || {};
-  $('#sUpdate').textContent = ({ dev: 'Updates are off in development.', checking: 'Checking for updates…', latest: "You're on the latest version.",
+  $('#sUpdate').textContent = ({ dev: 'Updates are off in development builds.', checking: 'Checking for updates…', latest: "You're on the latest version.",
     available: `Version ${u.version} is available.`, downloading: `Downloading ${u.version || 'update'}… ${u.percent || 0}%`,
     error: "Couldn't check for updates. Try again later.", idle: 'Checks automatically every 6 hours.' })[u.state] || '—';
 }
-$('#settingsBtn').onclick = () => openSettings();
-$('#sClose').onclick = () => modal('#settings', false);
+
+/* section list ↔ scroll position */
+function jumpTo(sec) {
+  const el = $('#st-' + sec); if (!el) return;
+  $('#stBody').scrollTo({ top: el.offsetTop - 28, behavior: 'smooth' });
+  markNav(sec);
+}
+function markNav(sec) { $('#stNav').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.s === sec)); }
+$('#stNav').querySelectorAll('button').forEach((b) => { b.onclick = () => jumpTo(b.dataset.s); });
+$('#stBody').addEventListener('scroll', () => {
+  const body = $('#stBody'); let cur = 'accounts';
+  body.querySelectorAll('.st-sec').forEach((s) => { if (s.offsetTop - 80 <= body.scrollTop) cur = s.id.slice(3); });
+  if (body.scrollTop + body.clientHeight >= body.scrollHeight - 4) cur = [...body.querySelectorAll('.st-sec')].pop().id.slice(3);
+  markNav(cur);
+});
+
+$('#settingsBtn').onclick = () => (state.view === 'settings' ? go('home') : openSettings());
 $('#sAutoAdd').onchange = (e) => nf.set('autoAddInstalled', e.target.checked);
 $('#sDiscord').onchange = (e) => nf.set('discordEnabled', e.target.checked);
 $('#sIdle').onchange = (e) => nf.set('discordIdle', e.target.checked);
@@ -58,16 +99,15 @@ $('#sTest').onclick = async () => {
   await nf.set('discordClientId', $('#sClientId').value.trim());
   if (!$('#sDiscord').checked) { $('#sDiscord').checked = true; await nf.set('discordEnabled', true); }
   await nf.testPresence();
-  toast('Sent a test: look at your Discord profile for the next 20 seconds');
+  toast('Test sent. Check your Discord profile in the next 20 seconds');
 };
 $('#sDevLink').onclick = () => nf.openLink('https://discord.com/developers/applications');
 $('#sKeyLink').onclick = () => nf.openLink('https://steamcommunity.com/dev/apikey');
 $('#sSteamKey').onchange = async (e) => {
   await nf.set('steamApiKey', e.target.value.trim());
-  $('#sFriendsState').textContent = 'Checking your key…';
-  const r = await nf.friends(true).catch(() => ({ error: 'Something went wrong.' }));
-  $('#sFriendsState').textContent = r.error === 'nokey' ? 'Your key stays on this PC and is only sent to Steam.' : r.error ? r.error : `Working · ${r.friends.length} friends found.`;
-  if (state.view === 'home') renderers.home(true);
+  $('#sFriendsState').textContent = 'Checking…';
+  await renderFriendsState(true);
+  if (renderers.home) renderers.home(true);
 };
 function paintIconChoice(v) {
   $('#sSetIcon').querySelectorAll('button').forEach((b) => { if (b.dataset.v !== 'none' && !b.innerHTML) b.innerHTML = ICON[b.dataset.v]; b.classList.toggle('on', b.dataset.v === v); });

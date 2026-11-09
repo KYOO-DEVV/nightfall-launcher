@@ -1,4 +1,4 @@
-/* global nf, lib, state, $, esc, bgu, ago, hours, toast, renderers, STORE_LABEL, go, now, loadNews, renderNewsInto, paintIcons */
+/* global drawer, ICON, setNewsButton, nf, lib, state, $, esc, bgu, ago, hours, toast, renderers, STORE_LABEL, go, now, loadNews, renderNewsInto, paintIcons */
 // Store page for games you own but haven't installed, and live install progress.
 
 /* ---------- store page ---------- */
@@ -20,7 +20,7 @@ renderers.store = async (force) => {
   $('#sgPage').hidden = !o.page;
   $('#sgFacts').innerHTML = '<div class="msg">Loading…</div>';
   $('#sgShots').innerHTML = '';
-  $('#sgNews').innerHTML = '';
+  $('#sgNewsBtn').hidden = true;
   const [info, feed] = await Promise.all([
     nf.storeInfo(o.store, o.id, o.appid).catch(() => ({})),
     loadNews({ name: o.name, appid: o.appid }, 's:' + o.id),
@@ -37,10 +37,8 @@ renderers.store = async (force) => {
   const shots = (info && info.screens) || [];
   $('#sgShots').innerHTML = shots.length ? shots.slice(0, 6).map((u) => `<button style="background-image:${bgu(u)}" data-u="${esc(u)}" aria-label="Screenshot"></button>`).join('') : '<div class="msg">No screenshots available.</div>';
   $('#sgShots').querySelectorAll('[data-u]').forEach((b) => { b.onclick = () => showShot(b.dataset.u); });
-  const has = !!(feed && ((feed.items && feed.items.length) || feed.banner));
-  $('#sgNewsPanel').hidden = !has;
-  $('#sgDetail').dataset.n = has ? 3 : 2;
-  if (has) { $('#sgNewsSrc').textContent = feed.source; renderNewsInto($('#sgNews'), feed); }
+  $('#sgDetail').dataset.n = 2;
+  setNewsButton($('#sgNewsBtn'), $('#sgNewsBadge'), feed, o.name);
 };
 function showShot(u) {
   const d = document.createElement('div');
@@ -68,51 +66,100 @@ function bytes(n) {
   while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
   return (n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)) + ' ' + u[i];
 }
-function eta(d) {
-  if (!d.total || !d.rate || d.rate < 1) return '';
+const rateTxt = (r) => (r ? bytes(r) + '/s' : '—');
+const mbit = (r) => (r ? Math.round((r * 8) / 1e6) + ' Mbit/s' : '');
+function etaTxt(d) {
+  if (!d.total || !d.rate || d.rate < 1) return '—';
   const s = (d.total - d.done) / d.rate;
-  if (s < 60) return 'less than a minute left';
-  if (s < 3600) return Math.round(s / 60) + ' min left';
-  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
-  return `${h}h ${m}m left`;
+  if (s < 60) return '< 1 min';
+  if (s < 3600) return Math.round(s / 60) + ' min';
+  return `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m`;
+}
+function finishAt(d) {
+  if (!d.total || !d.rate || d.rate < 1) return '';
+  const t = new Date(now() + ((d.total - d.done) / d.rate) * 1000);
+  return 'done around ' + t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 const pctOf = (d) => (d.total ? Math.min(100, (d.done / d.total) * 100) : 0);
+const STATE_TXT = { downloading: 'Downloading', installing: 'Installing', paused: 'Paused', queued: 'Queued' };
+const stateOf = (d) => (d.state === 'downloading' && d.phase === 'installing' ? 'installing' : d.state);
 function dlLine(d) {
-  if (d.state === 'paused') return `Paused · ${bytes(d.done)}${d.total ? ' of ' + bytes(d.total) : ''}`;
-  if (d.state === 'queued' && !d.rate) return `Queued in ${STORE_LABEL[d.store] || d.store}`;
-  return [d.rate ? bytes(d.rate) + '/s' : 'Starting…', d.total ? `${bytes(d.done)} of ${bytes(d.total)}` : bytes(d.done) + ' written', eta(d)].filter(Boolean).join(' · ');
+  const st = stateOf(d);
+  if (st === 'paused') return `Paused in ${STORE_LABEL[d.store] || d.store} · ${bytes(d.done)}${d.total ? ' of ' + bytes(d.total) : ''}`;
+  if (st === 'queued') return `Waiting in ${STORE_LABEL[d.store] || d.store}`;
+  return [rateTxt(d.rate), d.total ? `${bytes(d.done)} of ${bytes(d.total)}` : bytes(d.done) + ' written', d.total && d.rate ? etaTxt(d) + ' left' : ''].filter(Boolean).join(' · ');
+}
+/* speed graph: last 2 minutes */
+function spark(hist) {
+  const h = (hist || []).slice(-60);
+  if (h.length < 2) return '<div class="dl-spark empty">Measuring speed…</div>';
+  if (!h.some((v) => v > 0)) return '<div class="dl-spark empty">No data moving in the last 2 minutes</div>';
+  const max = Math.max(...h, 1), W = 300, H = 46;
+  const pts = h.map((v, i) => [(i / (h.length - 1)) * W, H - (v / max) * (H - 4) - 2]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  return `<svg class="dl-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#9ec5ff" stop-opacity=".35"/><stop offset="1" stop-color="#9ec5ff" stop-opacity="0"/></linearGradient></defs>
+    <path d="${line} L${W} ${H} L0 ${H}Z" fill="url(#sg)"/><path d="${line}" fill="none" stroke="#9ec5ff" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function paintStoreProgress() {
   const o = state.store; if (!o || state.view !== 'store') return;
   const d = (state.downloads || []).find((x) => x.key === dlKeyOf(o));
   $('#sgProg').hidden = !d;
-  $('#sgInstallTxt').textContent = d ? (d.state === 'paused' ? 'Paused' : 'Installing…') : 'Install';
+  $('#sgInstallTxt').textContent = d ? STATE_TXT[stateOf(d)] + (d.total ? ` ${Math.floor(pctOf(d))}%` : '…') : 'Install';
   if (!d) return;
   $('#sgBar').style.width = (d.total ? pctOf(d) : 100) + '%';
   $('#sgProg').classList.toggle('indet', !d.total);
+  $('#sgProg').classList.toggle('paused', stateOf(d) === 'paused');
   $('#sgPct').textContent = d.total ? Math.floor(pctOf(d)) + '%' : 'Installing';
   $('#sgRate').textContent = dlLine(d);
+}
+function dlCard(d) {
+  const st = stateOf(d), pct = pctOf(d);
+  const two = d.dlTotal && d.diskTotal;
+  const dPct = d.dlTotal ? Math.min(100, (d.dlDone / d.dlTotal) * 100) : 0, wPct = d.diskTotal ? Math.min(100, (d.diskDone / d.diskTotal) * 100) : 0;
+  const freeLow = d.free && d.total && d.free < d.total - d.done;
+  const fact = (k, v, sub) => `<div><span>${k}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  return `<article class="dl-card ${st}" data-key="${esc(d.key)}">
+    <div class="dl-head">
+      <span class="dl-art" style="${d.header ? `background-image:${bgu(d.header)}` : ''}"></span>
+      <div class="dl-title"><b>${esc(d.name)}</b><small>${esc(STORE_LABEL[d.store] || d.store)} · ${d.kind === 'update' ? 'Update' : 'Install'}</small></div>
+      <span class="dl-state ${st}">${STATE_TXT[st] || st}</span>
+    </div>
+    <div class="dl-big"><b>${d.total ? Math.floor(pct) + '<i>%</i>' : '—'}</b><span>${d.total ? `${bytes(d.done)} of ${bytes(d.total)}` : bytes(d.done) + ' written so far'}<br>${finishAt(d)}</span></div>
+    ${two ? `<div class="dl-bars"><div><span>Download</span><div class="bar"><i style="width:${dPct}%"></i></div><small>${bytes(d.dlDone)} / ${bytes(d.dlTotal)}</small></div>
+      <div><span>Install</span><div class="bar disk"><i style="width:${wPct}%"></i></div><small>${bytes(d.diskDone)} / ${bytes(d.diskTotal)}</small></div></div>`
+      : `<div class="bar ${d.total ? '' : 'indet'}"><i style="width:${d.total ? pct : 100}%"></i></div>`}
+    ${spark(d.history)}
+    <div class="dl-facts">
+      ${fact('Speed', rateTxt(d.rate), mbit(d.rate))}${fact('Peak', rateTxt(d.peak), d.avg ? 'avg ' + rateTxt(d.avg) : '')}${fact('Time left', etaTxt(d))}
+      ${fact('Drive', d.drive ? esc(d.drive) : '—', d.free ? `<em class="${freeLow ? 'low' : ''}">${bytes(d.free)} free</em>` : '')}
+    </div>
+    ${freeLow ? `<p class="dl-warn">Not enough free space on ${esc(d.drive || 'this drive')} to finish. Free up ${bytes(d.total - d.done - d.free)} or move the game.</p>` : ''}
+    ${d.path ? `<p class="dl-path" title="${esc(d.path)}">${esc(d.path)}</p>` : ''}
+  </article>`;
 }
 function paintDownloads() {
   const list = state.downloads || [];
   const pill = $('#dlPill');
   pill.hidden = !list.length;
   if (list.length) {
-    const d = list.find((x) => x.state === 'downloading') || list[0];
-    const pct = pctOf(d);
-    $('#dlRing').style.setProperty('--p', (d.total ? pct : 25) + '%');
+    const d = list.find((x) => stateOf(x) === 'downloading' || stateOf(x) === 'installing') || list[0];
+    $('#dlRing').style.setProperty('--p', (d.total ? pctOf(d) : 25) + '%');
     $('#dlRing').classList.toggle('spin', !d.total);
-    $('#dlTxt').textContent = `${d.name}${d.total ? ' · ' + Math.floor(pct) + '%' : ''}${d.rate ? ' · ' + bytes(d.rate) + '/s' : ''}${list.length > 1 ? ` · +${list.length - 1}` : ''}`;
-  } else $('#dlPop').hidden = true;
-  if (!$('#dlPop').hidden) {
-    $('#dlList').innerHTML = list.map((d) => `<div class="dl-item"><div class="dl-top"><b>${esc(d.name)}</b><span>${d.total ? Math.floor(pctOf(d)) + '%' : ''}</span></div>
-      <div class="bar ${d.total ? '' : 'indet'}"><i style="width:${d.total ? pctOf(d) : 100}%"></i></div><small>${esc(STORE_LABEL[d.store] || d.store)} · ${esc(dlLine(d))}</small></div>`).join('');
+    pill.classList.toggle('paused', stateOf(d) === 'paused');
+    $('#dlTxt').textContent = `${d.name}${d.total ? ' · ' + Math.floor(pctOf(d)) + '%' : ''}${d.rate ? ' · ' + rateTxt(d.rate) : stateOf(d) === 'paused' ? ' · paused' : ''}${list.length > 1 ? ` · +${list.length - 1}` : ''}`;
+  }
+  if (!$('#dlDrawer').hidden) {
+    const total = list.reduce((t, d) => t + (d.rate || 0), 0);
+    $('#dlSum').textContent = list.length ? `${list.length} ${list.length === 1 ? 'item' : 'items'}${total ? ' · ' + rateTxt(total) + ' total' : ''}` : 'Nothing downloading';
+    $('#dlList').innerHTML = list.length ? list.map(dlCard).join('') : `<div class="dr-empty">${ICON.download}<b>No downloads right now</b><p>Install a game from Library → Your stores and its progress shows here.</p></div>`;
+    $('#dlSteam').hidden = !list.some((d) => d.store === 'steam');
   }
   paintStoreProgress();
   if (renderers.paintCards) renderers.paintCards();
 }
-$('#dlPill').onclick = (e) => { e.stopPropagation(); $('#dlPop').hidden = !$('#dlPop').hidden; paintDownloads(); };
-document.addEventListener('click', (e) => { const p = $('#dlPop'); if (!p.hidden && !p.contains(e.target)) p.hidden = true; });
+$('#dlPill').onclick = (e) => { e.stopPropagation(); drawer('#dlDrawer', true); paintDownloads(); };
+$('#dlClose').onclick = () => drawer('#dlDrawer', false);
+$('#dlSteam').onclick = async () => { const err = await nf.openStore('steam://open/downloads'); if (err) toast(err); };
 
 let pollT = null;
 async function pollDownloads() {
@@ -127,7 +174,7 @@ async function pollDownloads() {
     }
   }
   paintDownloads();
-  const fast = state.downloads.length || now() < fastUntil || state.view === 'store';
+  const fast = state.downloads.length || now() < fastUntil || state.view === 'store' || !$('#dlDrawer').hidden;
   pollT = setTimeout(pollDownloads, fast ? 2000 : 20000);
 }
 window.addEventListener('DOMContentLoaded', () => { paintIcons(); setTimeout(pollDownloads, 1500); });

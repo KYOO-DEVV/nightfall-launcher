@@ -195,5 +195,5 @@ pub async fn owned_all(cache: &mut HashMap<String, SteamItem>) -> (Vec<Account>,
 
 /// only the stores' own install / launch links and store pages may be opened from the UI
 pub fn allowed_store_link(u: &str) -> bool {
-    Regex::new(r"^(steam://(install|rungameid)/\d+|com\.epicgames\.launcher://apps/[\w%.-]+\?action=(install|launch)(&silent=true)?|https://store\.steampowered\.com/app/\d+|goggalaxy://openGameView/[\w-]+|amazon-games://play/[\w.-]+|itch://games/\d+)$").unwrap().is_match(u)
+    Regex::new(r"^(steam://(install|rungameid)/\d+|steam://open/downloads|com\.epicgames\.launcher://apps/[\w%.-]+\?action=(install|launch)(&silent=true)?|https://store\.steampowered\.com/app/\d+|goggalaxy://openGameView/[\w-]+|amazon-games://play/[\w.-]+|itch://games/\d+)$").unwrap().is_match(u)
 }

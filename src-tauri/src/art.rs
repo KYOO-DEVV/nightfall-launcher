@@ -53,15 +53,33 @@ pub fn guess_name(exe: &str) -> String {
 pub fn fetch_icon(g: &mut Game, dir: &Path) {
     let _ = fs::create_dir_all(dir);
     let out = dir.join("icon.png");
+    let _ = fs::remove_file(&out);
+    // the exe's own icon at 256 px (PrivateExtractIcons picks the largest image in the icon group).
+    // An exe without an icon resource gives nothing, so the store / launcher icon is used instead of Windows' blank one.
     let script = format!(
-        "Add-Type -AssemblyName System.Drawing; $i=[System.Drawing.Icon]::ExtractAssociatedIcon('{}'); if($i){{ $i.ToBitmap().Save('{}',[System.Drawing.Imaging.ImageFormat]::Png) }}",
-        g.exe.replace('\'', "''"), out.to_string_lossy().replace('\'', "''")
+        "Add-Type -AssemblyName System.Drawing; Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class NfIx{{[DllImport(\"user32.dll\",CharSet=CharSet.Unicode)]public static extern uint PrivateExtractIcons(string f,int i,int cx,int cy,IntPtr[] h,uint[] id,uint n,uint fl);[DllImport(\"user32.dll\")]public static extern bool DestroyIcon(IntPtr h);}}';          $h=New-Object IntPtr[] 1; $id=New-Object UInt32[] 1; $n=[NfIx]::PrivateExtractIcons('{exe}',0,256,256,$h,$id,1,0);          if($n -gt 0 -and $h[0] -ne [IntPtr]::Zero){{ $ic=[System.Drawing.Icon]::FromHandle($h[0]); $b=$ic.ToBitmap(); $b.Save('{out}',[System.Drawing.Imaging.ImageFormat]::Png); $b.Dispose(); [NfIx]::DestroyIcon($h[0]) | Out-Null }}",
+        exe = g.exe.replace('\'', "''"), out = out.to_string_lossy().replace('\'', "''")
     );
     powershell(&script);
-    if out.exists() {
-        g.art.icon = Some(out.to_string_lossy().into());
+    if out.exists() && !is_blank_icon(&out) {
+        g.art.icon = Some(trim_alpha(&out.to_string_lossy()));
         tint_from(g, &out);
+    } else {
+        let _ = fs::remove_file(&out);
+        g.art.icon = None;
     }
+}
+/// Windows' generic "application" icon (white window, blue title bar) or an empty image
+fn is_blank_icon(f: &Path) -> bool {
+    let Ok(img) = image::open(f) else { return true };
+    let img = img.thumbnail(32, 32).to_rgba8();
+    let px: Vec<&image::Rgba<u8>> = img.pixels().filter(|p| p[3] > 128).collect();
+    if px.len() < 20 { return true }
+    // the generic icon is almost all white / light grey plus one saturated blue
+    let colorful = px.iter().filter(|p| { let mx = p[0].max(p[1]).max(p[2]) as i32; let mn = p[0].min(p[1]).min(p[2]) as i32; mx - mn > 40 }).count();
+    let blue = px.iter().filter(|p| p[2] as i32 > p[0] as i32 + 60 && p[2] > 150).count();
+    let light = px.iter().filter(|p| p[0] > 200 && p[1] > 200 && p[2] > 200).count();
+    blue * 20 >= px.len() && colorful <= blue + px.len() / 20 && light * 2 > px.len()
 }
 /// average colour of an icon's opaque pixels, used to tint placeholders so they match the game
 pub fn tint_from(g: &mut Game, file: &Path) {

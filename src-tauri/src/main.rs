@@ -203,7 +203,7 @@ fn connect_items(core: &Arc<Core>, items: Vec<scan::Item>) -> Vec<String> {
             if already_in(&db, &it) { continue }
             let procs = if it.procs.is_empty() { vec![Path::new(&it.exe).file_name().map(|s| s.to_string_lossy().to_lowercase()).unwrap_or_default()] } else { it.procs.clone() };
             let g = Game { id: new_id(6), exe: it.exe, dir: it.dir, source: Some(it.source), proc_: procs.join(",").to_lowercase(), launch: it.launch, appid: it.appid,
-                name: it.name, store_icon: it.store_icon, added_at: now_ms(), status: "searching".into(), art_rev: 3, ..Default::default() };
+                name: it.name, store_icon: it.store_icon, added_at: now_ms(), status: "searching".into(), art_rev: 4, ..Default::default() };
             ids.push(g.id.clone());
             db.games.push(g);
         }
@@ -632,7 +632,7 @@ async fn friends_get(core: C<'_>, force: bool) -> R<Value> {
     let core = core.inner().clone();
     if let Some((at, v)) = core.friends.lock().unwrap().clone() { if !force && now_ms() - at < 60_000 { return Ok(v) } }
     let key = core.db.lock().unwrap().settings.steam_api_key.clone();
-    let v = match social::steam_friends(&key).await { Ok(f) => json!({ "friends": f }), Err(e) => json!({ "error": e }) };
+    let v = match social::steam_friends(&key).await { Ok((f, via)) => json!({ "friends": f, "via": via }), Err(e) => json!({ "error": e }) };
     *core.friends.lock().unwrap() = Some((now_ms(), v.clone()));
     Ok(v)
 }
@@ -761,8 +761,10 @@ async fn update_install(core: C<'_>) -> R<()> {
 
 /* ================= start-up ================= */
 fn main() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+    let mut builder = tauri::Builder::default();
+    // a test copy pointed at its own data folder (NF_USERDATA) may run next to the installed app
+    if std::env::var("NF_USERDATA").is_err() { builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app))) }
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
@@ -800,8 +802,9 @@ fn main() {
             // re-fetch art for games added offline, and once for games from 1.x so they get the newest sources
             let ids: Vec<String> = {
                 let mut db = core.db.lock().unwrap();
-                db.games.iter_mut().filter(|g| g.status == "offline" || g.status == "searching" || (g.art_rev < 3 && g.art.hero.is_none() && g.art.header.is_none() && !g.custom.hero))
-                    .map(|g| { g.art_rev = 3; g.id.clone() }).collect()
+                // art_rev 4: sharper 256 px icons, and the official icon when the exe has none
+                db.games.iter_mut().filter(|g| g.status == "offline" || g.status == "searching" || g.art_rev < 4)
+                    .map(|g| { g.art_rev = 4; g.id.clone() }).collect()
             };
             for id in ids { queue_enrich(core.clone(), id, false) }
             // updates: shortly after start, then every 6 hours

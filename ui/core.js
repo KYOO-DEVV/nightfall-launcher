@@ -46,13 +46,13 @@ function logoHtml(g, cls = 't') {
 }
 
 /* ---------------- icons (one consistent stroke set) ---------------- */
-const P = (d, extra = '') => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+const P = (d, extra = '') => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
 const ICON = {
   home: P('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/>'),
   grid: P('<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>'),
   plus: P('<path d="M12 5v14M5 12h14"/>'),
   search: P('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
-  cog: P('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'),
+  cog: P('<path d="M10.3 3.4a1.8 1.8 0 0 1 3.4 0l.3.9a1.8 1.8 0 0 0 2.4 1l.9-.4a1.8 1.8 0 0 1 2.4 2.4l-.4.9a1.8 1.8 0 0 0 1 2.4l.9.3a1.8 1.8 0 0 1 0 3.4l-.9.3a1.8 1.8 0 0 0-1 2.4l.4.9a1.8 1.8 0 0 1-2.4 2.4l-.9-.4a1.8 1.8 0 0 0-2.4 1l-.3.9a1.8 1.8 0 0 1-3.4 0l-.3-.9a1.8 1.8 0 0 0-2.4-1l-.9.4a1.8 1.8 0 0 1-2.4-2.4l.4-.9a1.8 1.8 0 0 0-1-2.4l-.9-.3a1.8 1.8 0 0 1 0-3.4l.9-.3a1.8 1.8 0 0 0 1-2.4l-.4-.9a1.8 1.8 0 0 1 2.4-2.4l.9.4a1.8 1.8 0 0 0 2.4-1z"/><circle cx="12" cy="12" r="3"/>'),
   play: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
   star: P('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
   starOn: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
@@ -72,6 +72,12 @@ const ICON = {
   pencil: P('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
   download: P('<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>'),
   user: P('<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>'),
+  news: P('<path d="M5 4h11a1 1 0 0 1 1 1v14a1 1 0 0 0 1 1H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M17 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2"/><path d="M8 8h5M8 12h5M8 16h3"/>'),
+  chat: P('<path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/>'),
+  power: P('<path d="M12 3v8"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/>'),
+  refresh: P('<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/>'),
+  hdd: P('<rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5.5 13 8 5h8l2.5 8"/><path d="M7 16.5h.01M11 16.5h3"/>'),
+  gauge: P('<path d="M12 14l4-4"/><path d="M3.5 18a10 10 0 1 1 17 0"/>'),
   trophy: P('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/>'),
 };
 /* the Game settings icon is a user choice (Settings → Library) */
@@ -111,7 +117,7 @@ $('#wMax').onclick = () => nf.win.toggleMaximize();
 $('#wClose').onclick = () => nf.win.close();
 
 /* ---------------- navigation ---------------- */
-const VIEWS = { home: '#home', game: '#game', all: '#allView', review: '#reviewView', store: '#storeView', profile: '#profileView' };
+const VIEWS = { home: '#home', game: '#game', all: '#allView', review: '#reviewView', store: '#storeView', profile: '#profileView', news: '#newsView', settings: '#settingsView' };
 function go(view) {
   if (view === 'game' && !lib.games.length) view = 'home';
   if (state.view === 'all' && view !== 'all' && renderers.leaveAll) renderers.leaveAll(); // free 400 covers' worth of memory
@@ -121,6 +127,10 @@ function go(view) {
   $('#homeBtn').classList.toggle('on', view === 'home' || view === 'review');
   $('#allBtn').classList.toggle('on', view === 'all' || view === 'store');
   $('#profileBtn').classList.toggle('on', view === 'profile');
+  $('#newsBtn').classList.toggle('on', view === 'news');
+  $('#settingsBtn').classList.toggle('on', view === 'settings');
+  moveRailInd();
+  const v = $(VIEWS[view]); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
   renderRail();
   renderView(true);
 }
@@ -128,6 +138,23 @@ function select(id) { state.sel = id; go('game'); }
 $('#homeBtn').onclick = () => go('home');
 $('#allBtn').onclick = () => go('all');
 $('#profileBtn').onclick = () => go('profile');
+$('#newsBtn').onclick = () => go('news');
+/* sliding marker next to the active rail button */
+function moveRailInd() {
+  const on = document.querySelector('.rail .nav-btn.on, .rail .profile-btn.on, #rail .thumb.active');
+  const ind = $('#railInd');
+  if (!on) { ind.style.opacity = 0; return; }
+  const r = on.getBoundingClientRect(), p = $('.rail').getBoundingClientRect();
+  ind.style.opacity = 1; ind.style.transform = `translateY(${r.top - p.top + r.height / 2 - 9}px)`;
+}
+window.addEventListener('resize', () => moveRailInd());
+/* right-side drawers (downloads, news) */
+function drawer(id, open) {
+  const d = $(id);
+  if (open) { document.querySelectorAll('.drawer').forEach((x) => { if (x !== d) x.hidden = true; }); d.hidden = false; requestAnimationFrame(() => d.classList.add('open')); $('#scrim').hidden = false; requestAnimationFrame(() => $('#scrim').classList.add('open')); }
+  else { d.classList.remove('open'); $('#scrim').classList.remove('open'); setTimeout(() => { if (!d.classList.contains('open')) d.hidden = true; if (!document.querySelector('.drawer.open')) $('#scrim').hidden = true; }, 260); }
+}
+$('#scrim').onclick = () => document.querySelectorAll('.drawer.open').forEach((d) => drawer('#' + d.id, false));
 
 /* ---------------- sidebar ---------------- */
 const rail = $('#rail'), tip = $('#tip');
@@ -136,6 +163,7 @@ function tipFor(el, text) {
   el.addEventListener('mouseleave', () => tip.classList.remove('show'));
 }
 tipFor($('#homeBtn'), () => 'Home');
+tipFor($('#newsBtn'), () => 'News');
 tipFor($('#profileBtn'), () => (lib.profile && lib.profile.name) || 'Profile');
 tipFor($('#allBtn'), () => 'Library');
 tipFor($('#addBtnRail'), () => 'Add a game');
@@ -157,6 +185,7 @@ function renderRail() {
     tipFor(b, () => g.name + (g.open ? ' · playing' : ''));
     rail.appendChild(b);
   }
+  requestAnimationFrame(moveRailInd);
 }
 
 function renderProfileBtn() {
@@ -212,9 +241,9 @@ q.onkeydown = (e) => { if (e.key === 'Escape') pop.hidden = true; if (e.key === 
 document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
 
 /* ---------------- modal helpers ---------------- */
-function modal(id, open) { $(id).hidden = !open; }
+function modal(id, open) { const m = $(id); m.hidden = !open; if (open) { m.classList.remove('in'); void m.offsetWidth; m.classList.add('in'); } }
 document.querySelectorAll('.modal-bg').forEach((bg) => bg.addEventListener('mousedown', (e) => { if (e.target === bg) bg.hidden = true; }));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.modal-bg').forEach((m) => { m.hidden = true; }); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.modal-bg').forEach((m) => { m.hidden = true; }); document.querySelectorAll('.drawer.open').forEach((d) => drawer('#' + d.id, false)); } });
 
 /* ---------------- Game settings ---------------- */
 let mId = null;
