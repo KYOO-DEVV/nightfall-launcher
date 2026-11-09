@@ -66,12 +66,32 @@ const ICON = {
   pulse: P('<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>'),
   dots: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
   ext: P('<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>'),
+  bookmark: P('<path class="bm" d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4.2-6.5 4.2v-16a1 1 0 0 1 1-1z"/>'),
+  pin: P('<path d="M9 3.5h6l-1 5 3.5 3.5v2h-11v-2L10 8.5z"/><path d="M12 14v6.5"/>'),
+  sliders: P('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
+  pencil: P('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+  download: P('<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>'),
+  user: P('<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>'),
+  trophy: P('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/>'),
 };
+/* the Game settings icon is a user choice (Settings → Library) */
+const setIcon = () => { const k = (lib.settings && lib.settings.settingsIcon) || 'cog'; return k === 'none' ? '' : ICON[k] || ICON.cog; };
+function paintSetIcons() {
+  const k = (lib.settings && lib.settings.settingsIcon) || 'cog';
+  if (paintSetIcons.k === k) return; paintSetIcons.k = k;
+  document.querySelectorAll('.set-ic').forEach((el) => { el.innerHTML = setIcon(); el.hidden = k === 'none'; });
+}
+/* bookmark: filled + a little pop when it turns on */
+function paintBookmark(btn, on, animate) {
+  btn.innerHTML = ICON.bookmark;
+  btn.classList.toggle('on', !!on);
+  if (animate && on) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
+}
 function paintIcons(root = document) { root.querySelectorAll('[data-icon]').forEach((el) => { if (!el.dataset.painted) { el.insertAdjacentHTML('afterbegin', ICON[el.dataset.icon] || ''); el.dataset.painted = 1; } }); }
 
 /* ---------------- state ---------------- */
 let lib = { games: [], settings: {}, collections: [] };
-const state = { view: 'home', sel: null, shots: 0, shelf: 'recent', libTab: 'mine', filter: 'all', owned: null };
+const state = { view: 'home', sel: null, shots: 0, shelf: 'recent', libTab: 'mine', filter: 'all', owned: null, store: null, downloads: [] };
 const STORE_LABEL = { steam: 'Steam', epic: 'Epic Games', gog: 'GOG', ubisoft: 'Ubisoft Connect', riot: 'Riot Games', hoyo: 'HoYoPlay', ea: 'EA app', rockstar: 'Rockstar', xbox: 'Xbox', minecraft: 'Minecraft', amazon: 'Amazon Games', itch: 'itch.io', other: 'Other launchers', manual: 'Added by you' };
 const gameById = (id) => lib.games.find((g) => g.id === id);
 function ordered(tab = 'recent') {
@@ -91,7 +111,7 @@ $('#wMax').onclick = () => nf.win.toggleMaximize();
 $('#wClose').onclick = () => nf.win.close();
 
 /* ---------------- navigation ---------------- */
-const VIEWS = { home: '#home', game: '#game', all: '#allView', review: '#reviewView' };
+const VIEWS = { home: '#home', game: '#game', all: '#allView', review: '#reviewView', store: '#storeView', profile: '#profileView' };
 function go(view) {
   if (view === 'game' && !lib.games.length) view = 'home';
   if (state.view === 'all' && view !== 'all' && renderers.leaveAll) renderers.leaveAll(); // free 400 covers' worth of memory
@@ -99,13 +119,15 @@ function go(view) {
   for (const [k, sel] of Object.entries(VIEWS)) $(sel).hidden = k !== view;
   $('#main').dataset.view = view;
   $('#homeBtn').classList.toggle('on', view === 'home' || view === 'review');
-  $('#allBtn').classList.toggle('on', view === 'all');
+  $('#allBtn').classList.toggle('on', view === 'all' || view === 'store');
+  $('#profileBtn').classList.toggle('on', view === 'profile');
   renderRail();
   renderView(true);
 }
 function select(id) { state.sel = id; go('game'); }
 $('#homeBtn').onclick = () => go('home');
 $('#allBtn').onclick = () => go('all');
+$('#profileBtn').onclick = () => go('profile');
 
 /* ---------------- sidebar ---------------- */
 const rail = $('#rail'), tip = $('#tip');
@@ -114,6 +136,7 @@ function tipFor(el, text) {
   el.addEventListener('mouseleave', () => tip.classList.remove('show'));
 }
 tipFor($('#homeBtn'), () => 'Home');
+tipFor($('#profileBtn'), () => (lib.profile && lib.profile.name) || 'Profile');
 tipFor($('#allBtn'), () => 'Library');
 tipFor($('#addBtnRail'), () => 'Add a game');
 tipFor($('#searchBtn'), () => 'Search');
@@ -121,10 +144,10 @@ tipFor($('#settingsBtn'), () => 'Settings');
 let railKey = '';
 function renderRail() {
   const f = state.view === 'game' ? featured() : null;
-  const list = ordered('recent').slice(0, 14);
-  const key = list.map((g) => [g.id, g.art.icon, !!g.open, f && g.id === f.id].join()).join(';');
+  const list = ordered('recent').filter((g) => g.pinned);
+  const key = list.map((g) => [g.id, g.art.icon, !!g.open, f && g.id === f.id].join()).join(';') + '|' + list.length;
   if (key === railKey) return; railKey = key;
-  rail.innerHTML = '';
+  rail.innerHTML = list.length ? '' : '<span class="rail-empty" title="Pin games from their page">' + ICON.pin + '</span>';
   for (const g of list) {
     const b = document.createElement('button');
     b.className = 'thumb' + (f && g.id === f.id ? ' active' : '');
@@ -134,6 +157,13 @@ function renderRail() {
     tipFor(b, () => g.name + (g.open ? ' · playing' : ''));
     rail.appendChild(b);
   }
+}
+
+function renderProfileBtn() {
+  const p = lib.profile || {};
+  const img = $('#profileImg');
+  if (p.avatar) { if (img.getAttribute('src') !== p.avatar) img.src = p.avatar; img.hidden = false; $('#profileInit').textContent = ''; }
+  else { img.hidden = true; img.removeAttribute('src'); $('#profileInit').textContent = ((p.name || 'P').trim()[0] || 'P').toUpperCase(); }
 }
 
 /* ---------------- launching ---------------- */
@@ -195,10 +225,12 @@ function openModal(id) {
   if (g.art.icon) $('#mIcon').src = g.art.icon; else $('#mIcon').removeAttribute('src');
   $('#mName').value = g.name; $('#mProc').value = g.proc; $('#mQuery').value = g.name;
   $('#mResults').innerHTML = '';
+  $('#mPin').checked = !!g.pinned;
   resetRemove(); renderModalCols(id);
   modal('#modal', true); $('#mName').focus();
 }
 $('#mClose').onclick = () => modal('#modal', false);
+$('#mPin').onchange = (e) => nf.update(mId, { pinned: e.target.checked });
 $('#mSave').onclick = async () => { await nf.update(mId, { name: $('#mName').value, proc: $('#mProc').value }); toast('Saved'); modal('#modal', false); };
 async function doArtSearch() {
   const ul = $('#mResults'); ul.innerHTML = '<li class="msg">Searching Steam…</li>';
@@ -296,6 +328,8 @@ const renderers = {}; // filled by the view files
 function renderView(force) { const r = renderers[state.view]; if (r) r(force); }
 function render() {
   renderRail();
+  renderProfileBtn();
+  paintSetIcons();
   renderView(false);
   if (renderers.chrome) renderers.chrome();
 }

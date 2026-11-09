@@ -1,4 +1,4 @@
-/* global nf, lib, state, $, esc, toast, renderers, modal, STORE_LABEL */
+/* global nf, lib, state, $, esc, toast, renderers, modal, STORE_LABEL, ICON */
 // Settings, Discord status, update banner.
 
 const DISCORD_TEXT = {
@@ -26,6 +26,8 @@ async function openSettings(focus) {
   $('#sSteamKey').value = s.steamApiKey || '';
   $('#sLogin').checked = !!s.startWithWindows;
   $('#sTray').checked = s.closeToTray !== false;
+  $('#sFilters').checked = !!s.showFilters;
+  paintIconChoice(s.settingsIcon || 'cog');
   renderSettingsLive();
   if (focus) setTimeout(() => $(focus).focus(), 50);
   if (!state.owned) { try { state.owned = await nf.owned(false); } catch { state.owned = { accounts: [], games: [] }; } }
@@ -67,6 +69,11 @@ $('#sSteamKey').onchange = async (e) => {
   $('#sFriendsState').textContent = r.error === 'nokey' ? 'Your key stays on this PC and is only sent to Steam.' : r.error ? r.error : `Working · ${r.friends.length} friends found.`;
   if (state.view === 'home') renderers.home(true);
 };
+function paintIconChoice(v) {
+  $('#sSetIcon').querySelectorAll('button').forEach((b) => { if (b.dataset.v !== 'none' && !b.innerHTML) b.innerHTML = ICON[b.dataset.v]; b.classList.toggle('on', b.dataset.v === v); });
+}
+$('#sFilters').onchange = (e) => nf.set('showFilters', e.target.checked);
+$('#sSetIcon').querySelectorAll('button').forEach((b) => { b.onclick = async () => { paintIconChoice(b.dataset.v); await nf.set('settingsIcon', b.dataset.v); }; });
 $('#sLogin').onchange = (e) => nf.set('startWithWindows', e.target.checked);
 $('#sTray').onchange = (e) => nf.set('closeToTray', e.target.checked);
 $('#sCheck').onclick = async () => { const err = await nf.checkUpdate(); if (err) toast(err); };

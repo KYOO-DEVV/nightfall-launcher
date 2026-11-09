@@ -2,7 +2,9 @@
 //! Nightfall Launcher — Rust backend (Tauri). The interface lives in ../ui and talks to these commands.
 mod art;
 mod details;
+mod extra;
 mod libraries;
+mod matches;
 mod presence;
 mod scan;
 mod social;
@@ -43,6 +45,7 @@ pub struct Core {
     friends: Mutex<Option<(i64, Value)>>,
     sem: tokio::sync::Semaphore,
     auto_at: Mutex<i64>,
+    profile_dir: PathBuf,
 }
 type C<'a> = State<'a, Arc<Core>>;
 
@@ -70,9 +73,23 @@ impl Core {
             "version": self.app.package_info().version.to_string(),
             "update": *self.update.lock().unwrap(),
             "presence": self.presence.status(),
+            "profile": public_profile(&db.profile),
             "portable": false,
         })
     }
+}
+/// profile with picture URLs; falls back to your Steam name and avatar
+fn public_profile(p: &Profile) -> Value {
+    let steam = libraries::steam_account();
+    let steam_avatar = steam.as_ref().map(|a| scan::steam_root().join("config").join("avatarcache").join(format!("{}.png", a.id64)))
+        .filter(|f| f.exists()).map(|f| f.to_string_lossy().to_string());
+    let url = |x: &Option<String>| x.as_deref().and_then(|f| asset_url(f, p.ver));
+    json!({
+        "name": if p.name.trim().is_empty() { steam.as_ref().map(|a| a.persona.clone()).unwrap_or_else(|| "Player".into()) } else { p.name.clone() },
+        "bio": p.bio, "showcase": p.showcase,
+        "avatar": url(&p.avatar).or_else(|| steam_avatar.as_deref().and_then(|f| asset_url(f, 0))),
+        "banner": url(&p.banner), "customAvatar": p.avatar.is_some(), "customBanner": p.banner.is_some(),
+    })
 }
 fn public_game(g: &Game) -> Value {
     let a = |p: &Option<String>| p.as_deref().and_then(|p| asset_url(p, g.art_ver));
@@ -80,7 +97,7 @@ fn public_game(g: &Game) -> Value {
         "id": g.id, "name": g.name, "exe": g.exe, "proc": g.proc_, "addedAt": g.added_at, "appid": g.appid,
         "desc": g.desc.clone().unwrap_or_default(), "sessions": g.sessions, "open": g.open, "status": if g.status.is_empty() { "ready" } else { &g.status },
         "source": g.source.clone().unwrap_or_else(|| "manual".into()), "logoMono": g.logo_mono, "tint": g.tint, "fav": g.fav,
-        "detail": details::kind_of(g), "steamMin": g.steam_min, "live": g.live,
+        "detail": details::kind_of(g), "steamMin": g.steam_min, "live": g.live, "pinned": g.pinned,
         "art": { "cover": a(&g.art.cover), "hero": a(&g.art.hero), "logo": a(&g.art.logo), "header": a(&g.art.header), "icon": a(&g.art.icon) },
     })
 }
@@ -201,6 +218,7 @@ fn tracker(core: Arc<Core>) {
     tauri::async_runtime::spawn(async move {
         let mut sys = sysinfo::System::new();
         let mut live_at = 0i64;
+        let mut heavy_at: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
         loop {
             sys.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, sysinfo::ProcessRefreshKind::new());
             let procs: std::collections::HashSet<String> = sys.processes().values().map(|p| p.name().to_string_lossy().to_lowercase()).collect();
@@ -231,6 +249,10 @@ fn tracker(core: Arc<Core>) {
                 live_at = now;
                 let open: Vec<Game> = { core.db.lock().unwrap().games.iter().filter(|g| g.open.is_some() || g.live.is_some()).cloned().collect() };
                 for g in open {
+                    // Fortnite / Valorant logs are big: re-read them once a minute
+                    let heavy = matches!(details::kind_of(&g), Some("fortnite" | "valorant"));
+                    if heavy && g.open.is_some() && now - heavy_at.get(&g.id).cloned().unwrap_or(0) < 60_000 { continue }
+                    if heavy { heavy_at.insert(g.id.clone(), now); }
                     let live = if g.open.is_some() && details::kind_of(&g).is_some() {
                         let caches = core.db.lock().unwrap().caches.clone();
                         let (d, caches) = details::details_for(&g, caches).await;
@@ -404,6 +426,7 @@ fn game_update(core: C<'_>, id: String, patch: Value) {
         if let Some(n) = patch["name"].as_str().map(str::trim).filter(|s| !s.is_empty()) { g.name = n.chars().take(120).collect() }
         if let Some(p) = patch["proc"].as_str().map(str::trim).filter(|s| !s.is_empty()) { g.proc_ = p.to_lowercase().chars().take(300).collect() }
         if let Some(f) = patch["fav"].as_bool() { g.fav = f }
+        if let Some(f) = patch["pinned"].as_bool() { g.pinned = f }
     }
     core.mark(); core.notify();
 }
@@ -516,6 +539,8 @@ fn app_set(core: C<'_>, key: String, val: Value) {
             "discordIdle" => s.discord_idle = val.as_bool().unwrap_or(false),
             "autoAddInstalled" => s.auto_add_installed = val.as_bool().unwrap_or(true),
             "discordClientId" => s.discord_client_id = val.as_str().unwrap_or("").chars().filter(|c| c.is_ascii_digit()).take(22).collect(),
+            "showFilters" => s.show_filters = val.as_bool().unwrap_or(false),
+            "settingsIcon" => { let v = val.as_str().unwrap_or("cog"); if ["cog", "sliders", "dots", "pencil", "none"].contains(&v) { s.settings_icon = v.into() } }
             "steamApiKey" => { s.steam_api_key = val.as_str().unwrap_or("").chars().filter(|c| c.is_ascii_alphanumeric()).take(40).collect(); *core.friends.lock().unwrap() = None; }
             _ => {}
         }
@@ -625,7 +650,7 @@ async fn save_card(core: C<'_>, png_base64: String, name: String) -> R<Option<St
 #[tauri::command]
 fn open_link(url: String) -> Option<String> {
     let ok = regex::Regex::new(r"^https://(steamcommunity\.com/(dev/apikey|profiles/\d+|id/[\w-]+)/?|discord\.com/developers/applications/?|www\.roblox\.com/games/\d+[\w/-]*|store\.steampowered\.com/app/\d+/?|github\.com/KYOO-DEVV/nightfall-launcher[\w/.-]*)$").unwrap();
-    if !ok.is_match(&url) { return Some("That link can't be opened from Nightfall.".into()) }
+    if !ok.is_match(&url) && !extra::allowed_news_link(&url) { return Some("That link can't be opened from Nightfall.".into()) }
     tauri_plugin_opener::open_url(&url, None::<&str>).err().map(|e| e.to_string())
 }
 /// an image as a data: URL, so share cards can draw it without tainting the canvas
@@ -646,6 +671,74 @@ async fn image_data(src: String) -> R<Option<String>> {
         (b.to_vec(), ct)
     } else { return Ok(None) };
     Ok(Some(format!("data:{};base64,{}", mime, base64::engine::general_purpose::STANDARD.encode(bytes))))
+}
+/* ---------- news, downloads, store pages, profile ---------- */
+#[tauri::command]
+async fn news_get(core: C<'_>, id: Option<String>, name: Option<String>, appid: Option<i64>) -> R<Option<Value>> {
+    let found = id.and_then(|id| core.db.lock().unwrap().by_id(&id).map(|g| (g.name.clone(), g.appid)));
+    let (n, a) = found.unwrap_or((name.unwrap_or_default(), appid));
+    let Some(key) = extra::news_key(&n, a) else { return Ok(None) };
+    Ok(extra::news(&key).await.ok().map(|f| json!(f)))
+}
+#[tauri::command]
+async fn downloads_get() -> R<Value> {
+    Ok(json!(tokio::task::spawn_blocking(extra::downloads).await.unwrap_or_default()))
+}
+#[tauri::command]
+async fn store_info_get(store: String, id: String, appid: Option<i64>) -> R<Value> {
+    Ok(extra::store_info(&store, &id, appid).await)
+}
+#[tauri::command]
+fn profile_set(core: C<'_>, patch: Value) {
+    {
+        let mut db = core.db.lock().unwrap();
+        let ids: Vec<String> = db.games.iter().map(|g| g.id.clone()).collect();
+        let p = &mut db.profile;
+        if let Some(n) = patch["name"].as_str() { p.name = n.trim().chars().take(32).collect() }
+        if let Some(b) = patch["bio"].as_str() { p.bio = b.trim().chars().take(160).collect() }
+        if let Some(sc) = patch["showcase"].as_array() {
+            let mut v: Vec<String> = vec![];
+            for x in sc.iter().filter_map(|x| x.as_str()) { if ids.iter().any(|i| i == x) && !v.iter().any(|y| y == x) { v.push(x.to_string()) } }
+            v.truncate(12);
+            p.showcase = v;
+        }
+    }
+    core.mark(); core.notify();
+}
+#[tauri::command]
+async fn profile_pick(core: C<'_>, kind: String) -> R<bool> {
+    if kind != "avatar" && kind != "banner" { return Ok(false) }
+    let core = core.inner().clone();
+    let app = core.app.clone();
+    let title = if kind == "avatar" { "Choose a profile picture" } else { "Choose a banner" };
+    let picked = tokio::task::spawn_blocking(move || app.dialog().file().set_title(title).add_filter("Images", &["png", "jpg", "jpeg", "webp", "gif"]).blocking_pick_file()).await.map_err(|e| e.to_string())?;
+    let Some(src) = picked.and_then(|f| f.into_path().ok()) else { return Ok(false) };
+    let _ = std::fs::create_dir_all(&core.profile_dir);
+    let ext = src.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_else(|| "png".into());
+    // replace the previous picture of this kind
+    for e in std::fs::read_dir(&core.profile_dir).into_iter().flatten().flatten() {
+        if e.file_name().to_string_lossy().starts_with(&format!("{}.", kind)) { let _ = std::fs::remove_file(e.path()); }
+    }
+    let dest = core.profile_dir.join(format!("{}.{}", kind, ext));
+    std::fs::copy(&src, &dest).map_err(|e| e.to_string())?;
+    {
+        let mut db = core.db.lock().unwrap();
+        let d = Some(dest.to_string_lossy().to_string());
+        if kind == "avatar" { db.profile.avatar = d } else { db.profile.banner = d }
+        db.profile.ver = now_ms();
+    }
+    core.mark(); core.notify();
+    Ok(true)
+}
+#[tauri::command]
+fn profile_clear(core: C<'_>, kind: String) {
+    {
+        let mut db = core.db.lock().unwrap();
+        let f = match kind.as_str() { "avatar" => db.profile.avatar.take(), "banner" => db.profile.banner.take(), _ => None };
+        if let Some(f) = f { let _ = std::fs::remove_file(f); }
+        db.profile.ver = now_ms();
+    }
+    core.mark(); core.notify();
 }
 #[tauri::command]
 async fn update_check(core: C<'_>) -> R<Option<String>> { Ok(check_update(core.inner().clone()).await.err()) }
@@ -688,10 +781,13 @@ fn main() {
                 app: app.handle().clone(), db: Mutex::new(db), dirty: AtomicBool::new(true), file, art,
                 update: Mutex::new(json!({ "state": "idle" })), pending: Mutex::new(None), presence: presence::Presence::start(),
                 owned: Mutex::new(None), last_scan: Mutex::new(vec![]), test_until: Mutex::new(0), friends: Mutex::new(None),
-                sem: tokio::sync::Semaphore::new(3), auto_at: Mutex::new(now_ms() + 20_000),
+                sem: tokio::sync::Semaphore::new(3), auto_at: Mutex::new(now_ms() + 20_000), profile_dir: dir.join("profile"),
             });
             // let the webview load this library's art wherever the data folder lives
             let _ = app.asset_protocol_scope().allow_directory(&core.art, true);
+            let _ = std::fs::create_dir_all(&core.profile_dir);
+            let _ = app.asset_protocol_scope().allow_directory(&core.profile_dir, true);
+            let _ = app.asset_protocol_scope().allow_directory(scan::steam_root().join("config").join("avatarcache"), false);
             app.manage(core.clone());
             core.flush();
             build_tray(app.handle(), core.clone())?;
@@ -742,7 +838,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             lib_get, lib_add_dialog, lib_add_paths, lib_scan, lib_connect, game_launch, game_update, game_remove, game_show_file,
             art_search, art_apply, art_refetch, art_custom, stats_screenshots, app_settings, app_set, presence_test, details_get,
-            col_create, col_rename, col_delete, col_toggle, owned_get, owned_open, friends_get, save_card, update_check, update_install, open_link, image_data
+            col_create, col_rename, col_delete, col_toggle, owned_get, owned_open, friends_get, save_card, update_check, update_install, open_link, image_data,
+            news_get, downloads_get, store_info_get, profile_set, profile_pick, profile_clear
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nightfall");

@@ -31,7 +31,7 @@ function storeTile(o) {
   return b;
 }
 function shelfTabs() {
-  const tabs = [['recent', 'Recently played'], ['fav', 'Favorites']];
+  const tabs = [['recent', 'Recently played'], ['fav', 'Bookmarks']];
   for (const c of lib.collections || []) if (c.games.some(gameById)) tabs.push(['col:' + c.id, c.name]);
   tabs.push(['added', 'Recently added']);
   if (state.owned && state.owned.games.some((x) => !x.gameId)) tabs.push(['stores', 'From your stores']);
@@ -44,7 +44,7 @@ function shelfItems(k) {
   if (k.startsWith('col:')) { const c = (lib.collections || []).find((x) => 'col:' + x.id === k); return c ? c.games.map(gameById).filter(Boolean) : []; }
   return [];
 }
-const SHELF_EMPTY = { recent: 'Games you play show up here, even when you start them from Steam or a desktop shortcut.', fav: 'Star a game on its page to pin it here.', added: 'No games yet.' };
+const SHELF_EMPTY = { recent: 'Games you play show up here, even when you start them from Steam or a desktop shortcut.', fav: 'Bookmark a game on its page and it shows up here.', added: 'No games yet.' };
 
 /* ---------- friends ---------- */
 let friendsData = null, friendsAt = 0;
@@ -118,7 +118,7 @@ renderers.home = (force) => {
   /* shelf */
   const tabs = shelfTabs();
   if (!tabs.some((t) => t[0] === state.shelf)) state.shelf = 'recent';
-  $('#shelfTabs').innerHTML = tabs.map(([k, l]) => `<button class="chip ${k === state.shelf ? 'on' : ''}" data-k="${esc(k)}">${k === 'fav' ? ICON.star + ' ' : ''}${esc(l)}</button>`).join('');
+  $('#shelfTabs').innerHTML = tabs.map(([k, l]) => `<button class="chip ${k === state.shelf ? 'on' : ''}" data-k="${esc(k)}">${k === 'fav' ? ICON.bookmark + ' ' : ''}${esc(l)}</button>`).join('');
   $('#shelfTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => { state.shelf = b.dataset.k; renderers.home(true); }; });
   const row = $('#shelfRow'); row.innerHTML = '';
   if (state.shelf === 'stores') {

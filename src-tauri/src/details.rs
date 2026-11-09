@@ -1,6 +1,6 @@
 //! Per-game detail from the games' own logs: Roblox experiences, Minecraft instances.
 //! History from before Nightfall shows up too.
-use crate::store::{Caches, Game, Live, RbxInfo};
+use crate::store::{Caches, Game, GameMatch, Live, RbxInfo};
 use crate::util::*;
 use chrono::{Local, TimeZone};
 use once_cell::sync::Lazy;
@@ -27,12 +27,18 @@ pub struct DItem {
 pub struct Details {
     pub kind: String, pub title: String, pub source: String,
     pub items: Vec<DItem>, pub plays: Vec<Play>, pub live: Option<Live>,
+    /// newest first; Fortnite / Valorant
+    pub matches: Vec<GameMatch>,
+    pub stats: Vec<(String, String)>,
 }
 
 pub fn kind_of(g: &Game) -> Option<&'static str> {
     let p = g.proc_.to_lowercase();
     if p.contains("robloxplayerbeta") || g.name.to_lowercase().starts_with("roblox") { return Some("roblox") }
     if g.source.as_deref() == Some("minecraft") || p.contains("javaw.exe") { return Some("minecraft") }
+    let n = g.name.to_lowercase();
+    if p.contains("fortniteclient") || p.contains("fortnitelauncher") || n == "fortnite" { return Some("fortnite") }
+    if p.contains("valorant") || n == "valorant" { return Some("valorant") }
     None
 }
 
@@ -147,7 +153,7 @@ pub async fn roblox_details(rbx: HashMap<String, RbxInfo>) -> (Details, HashMap<
     items.sort_by_key(|i| -i.last);
     let live = items.iter().find(|i| i.live).map(|i| Live { name: i.name.clone(), icon: i.icon.clone(), since: segs.iter().find(|s| s.e.is_none()).map(|s| s.s).unwrap_or(now), url: i.url.clone() });
     let plays = segs.iter().map(|s| Play { s: s.s, e: s.e.unwrap_or(now), key: s.u.clone() }).collect();
-    (Details { kind: "roblox".into(), title: "Experiences".into(), source: "Roblox's logs".into(), items, plays, live }, cache)
+    (Details { kind: "roblox".into(), title: "Experiences".into(), source: "Roblox's logs".into(), items, plays, live, ..Default::default() }, cache)
 }
 
 /* =================== Minecraft =================== */
@@ -247,7 +253,7 @@ pub fn minecraft_details(cache: &mut HashMap<String, serde_json::Value>) -> Deta
     }
     items.sort_by_key(|i| -i.last);
     let live = items.iter().find(|i| i.live).map(|i| Live { name: i.name.clone(), icon: None, since: live_since.unwrap_or(now), url: None });
-    Details { kind: "minecraft".into(), title: "Instances".into(), source: "Minecraft logs".into(), items, plays, live }
+    Details { kind: "minecraft".into(), title: "Instances".into(), source: "Minecraft logs".into(), items, plays, live, ..Default::default() }
 }
 
 /// details for a game; caches are passed in and handed back so the library lock isn't held across network calls
@@ -265,6 +271,54 @@ pub async fn details_for(g: &Game, caches: Caches) -> (Option<Details>, Caches) 
             caches.mc = mc;
             (Some(d), caches)
         }
+        Some("fortnite") => {
+            let saved = caches.fortnite.clone();
+            caches.fortnite = tokio::task::spawn_blocking(move || crate::matches::fortnite_blocking(saved)).await.unwrap_or_default();
+            (Some(from_matches("fortnite", "Modes you played", "Fortnite's logs", &caches.fortnite)), caches)
+        }
+        Some("valorant") => {
+            crate::matches::valorant(&mut caches.valorant).await;
+            (Some(from_matches("valorant", "Maps you played", "Valorant's logs", &caches.valorant)), caches)
+        }
         _ => (None, caches),
     }
+}
+
+/// matches → grouped items (mode / map), plays and headline stats
+fn from_matches(kind: &str, title: &str, source: &str, ms: &[GameMatch]) -> Details {
+    let now = now_ms();
+    let mut by: HashMap<String, DItem> = HashMap::new();
+    let mut wins: HashMap<String, i64> = HashMap::new();
+    for m in ms {
+        let e = if m.live { now } else { m.e };
+        let it = by.entry(m.title.clone()).or_insert_with(|| DItem { key: m.title.clone(), name: m.title.clone(), icon: m.thumb.clone(), ..Default::default() });
+        it.ms += e - m.s; it.sessions += 1; it.last = it.last.max(e);
+        if m.live { it.live = true }
+        if m.win == Some(true) { *wins.entry(m.title.clone()).or_default() += 1 }
+    }
+    let mut items: Vec<DItem> = by.into_values().map(|mut it| {
+        let w = wins.get(&it.key).cloned().unwrap_or(0);
+        if kind == "fortnite" && w > 0 { it.sub = format!("{} {}", w, if w == 1 { "Victory Royale" } else { "Victory Royales" }) }
+        it
+    }).collect();
+    items.sort_by_key(|i| -i.ms);
+    let plays = ms.iter().map(|m| Play { s: m.s, e: if m.live { now } else { m.e }, key: m.title.clone() }).collect();
+    let live = ms.iter().rev().find(|m| m.live).map(|m| Live { name: if m.sub.is_empty() { m.title.clone() } else { format!("{} · {}", m.title, m.sub) }, icon: m.icon.clone().or(m.thumb.clone()), since: m.s, url: None });
+    let mut matches: Vec<GameMatch> = ms.to_vec();
+    matches.reverse();
+    matches.truncate(60);
+    let n = ms.len() as i64;
+    let mut stats = vec![("Matches".to_string(), n.to_string())];
+    if kind == "fortnite" {
+        let w = ms.iter().filter(|m| m.win == Some(true)).count();
+        stats.push(("Victory Royales".into(), w.to_string()));
+        stats.push(("Win rate".into(), if n > 0 { format!("{}%", (w as f64 / n as f64 * 100.0).round()) } else { "—".into() }));
+    } else {
+        let mut agents: HashMap<String, i64> = HashMap::new();
+        for m in ms { if let Some(a) = m.sub.split(" · ").next().filter(|a| !a.is_empty()) { *agents.entry(a.to_string()).or_default() += 1 } }
+        let rounds: i64 = ms.iter().map(|m| m.rounds).sum();
+        stats.push(("Rounds".into(), rounds.to_string()));
+        stats.push(("Main agent".into(), agents.into_iter().max_by_key(|x| x.1).map(|x| x.0).unwrap_or_else(|| "—".into())));
+    }
+    Details { kind: kind.into(), title: title.into(), source: source.into(), items, plays, live, matches, stats }
 }

@@ -81,6 +81,8 @@ pub struct Game {
     pub remote: Remote,
     pub art_ver: i64,
     pub art_rev: i64,
+    /// shown in the sidebar
+    pub pinned: bool,
     #[serde(skip)]
     pub live: Option<Live>,
 }
@@ -94,11 +96,49 @@ pub struct Settings {
     pub discord_idle: bool,
     pub auto_add_installed: bool,
     pub steam_api_key: String,
+    /// filter chips above the library grid
+    pub show_filters: bool,
+    /// icon on the Game settings buttons: cog, sliders, dots, pencil or none
+    pub settings_icon: String,
 }
 impl Default for Settings {
     fn default() -> Self {
-        Settings { close_to_tray: true, discord_enabled: false, discord_client_id: String::new(), discord_idle: false, auto_add_installed: true, steam_api_key: String::new() }
+        Settings { close_to_tray: true, discord_enabled: false, discord_client_id: String::new(), discord_idle: false, auto_add_installed: true, steam_api_key: String::new(),
+            show_filters: false, settings_icon: "cog".into() }
     }
+}
+
+/// your profile page
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[serde(default)]
+pub struct Profile {
+    pub name: String,
+    pub bio: String,
+    /// files inside the data folder's profile/ directory
+    pub avatar: Option<String>,
+    pub banner: Option<String>,
+    /// game ids shown on the profile, in order
+    pub showcase: Vec<String>,
+    pub ver: i64,
+}
+
+/// one match read from a game's own logs (Fortnite, Valorant); kept because the games overwrite their logs
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[serde(default)]
+pub struct GameMatch {
+    pub s: i64,
+    pub e: i64,
+    /// mode / map, the thing matches are grouped by
+    pub title: String,
+    pub sub: String,
+    pub icon: Option<String>,
+    pub thumb: Option<String>,
+    pub result: String,
+    pub win: Option<bool>,
+    pub agent: Option<String>,
+    pub map: Option<String>,
+    pub rounds: i64,
+    pub live: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -139,6 +179,8 @@ pub struct Caches {
     /// Minecraft .log.gz → parsed span (or 0 when the file had none); gz logs never change
     pub mc: HashMap<String, Value>,
     pub steam: HashMap<String, SteamItem>,
+    pub fortnite: Vec<GameMatch>,
+    pub valorant: Vec<GameMatch>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -149,6 +191,7 @@ pub struct Db {
     pub collections: Vec<Collection>,
     pub ignored: Vec<Ignored>,
     pub caches: Caches,
+    pub profile: Profile,
     /// set once the 1.x (Electron) library has been imported
     pub migrated: bool,
 }

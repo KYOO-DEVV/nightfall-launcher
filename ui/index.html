@@ -8,10 +8,12 @@
 <link rel="stylesheet" href="home.css">
 <link rel="stylesheet" href="views.css">
 <link rel="stylesheet" href="layout.css">
+<link rel="stylesheet" href="more.css">
 </head>
 <body>
 <header class="titlebar" data-tauri-drag-region>
   <span class="tb-title" data-tauri-drag-region>Nightfall</span>
+  <button class="dl-pill" id="dlPill" hidden><i class="dl-ring" id="dlRing"></i><span id="dlTxt"></span></button>
   <div class="wc">
     <button id="wMin" aria-label="Minimize" data-icon="min"></button>
     <button id="wMax" aria-label="Maximize" data-icon="max"></button>
@@ -21,6 +23,7 @@
 
 <div class="window" id="win">
   <nav class="rail" aria-label="Navigation">
+    <button class="profile-btn" id="profileBtn" aria-label="Profile"><img id="profileImg" alt=""><span id="profileInit"></span></button>
     <button class="nav-btn" id="homeBtn" aria-label="Home" data-icon="home"></button>
     <button class="nav-btn" id="allBtn" aria-label="Library" data-icon="grid"></button>
     <div class="stack" id="rail"></div>
@@ -100,9 +103,10 @@
           <div class="logo" id="logo"></div>
           <p class="desc" id="desc"></p>
           <div class="actions">
-            <button class="btn btn-ghost icon-only" id="favBtn" aria-label="Add to favorites" data-icon="star"></button>
+            <button class="btn btn-ghost icon-only fav-btn" id="favBtn" aria-label="Bookmark"></button>
+            <button class="btn btn-ghost icon-only" id="pinBtn" aria-label="Pin to sidebar"></button>
             <button class="btn btn-ghost icon-only" id="shareGameBtn" aria-label="Share stats card" data-icon="share"></button>
-            <button class="btn btn-ghost" id="setBtn"><span>Game settings</span><span class="ic" data-icon="cog"></span></button>
+            <button class="btn btn-ghost" id="setBtn"><span>Game settings</span><span class="ic set-ic"></span></button>
             <button class="btn btn-solid" id="playBtn"><span id="playTxt">Play</span><span class="ic" data-icon="play"></span></button>
           </div>
         </div>
@@ -114,14 +118,74 @@
           <div class="d-facts" id="dFacts"></div>
         </div>
         <div class="panel scroll-panel">
-          <div class="row-head"><h2>Recent sessions</h2></div>
+          <div class="row-head"><div class="p-tabs" id="dTabs"><button class="on" data-t="sessions">Recent sessions</button><button data-t="matches" hidden>Matches</button></div><span class="muted" id="dTabSub"></span></div>
           <ol class="d-sessions" id="dSessions"></ol>
+          <ol class="d-matches" id="dMatches" hidden></ol>
         </div>
         <div class="panel scroll-panel" id="dSubPanel" hidden>
           <div class="row-head"><h2 id="dSubTitle">Experiences</h2><span class="muted" id="dSubSrc"></span></div>
           <div class="d-live" id="dLive" hidden></div>
           <ol class="d-items" id="dItems"></ol>
         </div>
+        <div class="panel news-panel" id="dNewsPanel" hidden>
+          <div class="row-head"><h2>News</h2><span class="muted" id="dNewsSrc"></span></div>
+          <div class="news" id="dNews"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STORE GAME (owned, not installed) ================= -->
+    <section class="view game store-game" id="storeView" hidden>
+      <div class="hero2">
+        <div class="hero-art" id="sgArt"></div>
+        <div class="hero-stats" id="sgStats"></div>
+        <div class="hero-copy">
+          <span class="chip"><span id="sgChip"></span></span>
+          <div class="logo" id="sgLogo"></div>
+          <p class="desc" id="sgDesc"></p>
+          <div class="sg-progress" id="sgProg" hidden><div class="bar"><i id="sgBar"></i></div><div class="sg-prog-tx"><b id="sgPct"></b><span id="sgRate"></span></div></div>
+          <div class="actions">
+            <button class="btn btn-ghost" id="sgPage"><span>Store page</span><span class="ic" data-icon="ext"></span></button>
+            <button class="btn btn-solid" id="sgInstall"><span id="sgInstallTxt">Install</span><span class="ic" data-icon="download"></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="detail2" id="sgDetail">
+        <div class="panel">
+          <div class="row-head"><h2>About</h2><span class="muted" id="sgStore"></span></div>
+          <dl class="sg-facts" id="sgFacts"></dl>
+        </div>
+        <div class="panel">
+          <div class="row-head"><h2>Screenshots</h2></div>
+          <div class="sg-shots" id="sgShots"></div>
+        </div>
+        <div class="panel news-panel" id="sgNewsPanel">
+          <div class="row-head"><h2>News</h2><span class="muted" id="sgNewsSrc"></span></div>
+          <div class="news" id="sgNews"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PROFILE (one screen) ================= -->
+    <section class="view profile" id="profileView" hidden>
+      <div class="pf-banner" id="pfBanner">
+        <div class="pf-banner-btns">
+          <button class="btn btn-ghost sm" id="pfBannerBtn"><span>Change banner</span></button>
+          <button class="btn btn-ghost sm" id="pfBannerReset" hidden><span>Reset</span></button>
+        </div>
+      </div>
+      <div class="pf-head">
+        <button class="pf-avatar" id="pfAvatar" aria-label="Change profile picture"><img id="pfAvatarImg" alt=""><span id="pfAvatarInit"></span><i>Change</i></button>
+        <div class="pf-id">
+          <input class="pf-name" id="pfName" maxlength="32" spellcheck="false" aria-label="Name">
+          <input class="pf-bio" id="pfBio" maxlength="160" placeholder="Add a short bio, e.g. what you're playing these days" aria-label="Bio">
+        </div>
+        <div class="actions"><button class="btn btn-ghost sm" id="pfAvatarReset" hidden><span>Reset picture</span></button></div>
+      </div>
+      <div class="pf-stats" id="pfStats"></div>
+      <div class="panel pf-show">
+        <div class="row-head"><h2>Showcase</h2><button class="btn btn-ghost sm" id="pfEdit"><span>Choose games</span></button></div>
+        <div class="pf-grid" id="pfGrid"></div>
       </div>
     </section>
 
@@ -181,6 +245,7 @@
         <button class="btn btn-ghost sm" id="mLogo"><span>Use my own logo</span></button>
         <button class="btn btn-ghost sm" id="mRefetch"><span>Fetch art again</span></button>
       </div>
+      <label class="s-row toggle m-pin"><div><b>Pin to sidebar</b><small>Pinned games get a shortcut in the left bar.</small></div><input type="checkbox" id="mPin"></label>
       <label for="mNewCol">Collections</label>
       <div class="col-list" id="mCols"></div>
       <div class="row"><input id="mNewCol" type="text" placeholder="New collection, e.g. Co-op with friends" maxlength="40"><button class="btn btn-ghost sm" id="mAddCol"><span>Create</span></button></div>
@@ -192,6 +257,18 @@
       </footer>
     </div>
   </div>
+
+  <!-- showcase picker -->
+  <div class="modal-bg" id="showcase" hidden>
+    <div class="modal pick" role="dialog" aria-modal="true" aria-labelledby="scTitle">
+      <header><h3 id="scTitle">Showcase</h3><button class="x" id="scClose" aria-label="Close" data-icon="x"></button></header>
+      <p class="help">Pick up to 12 games for your profile, in the order you click them.</p>
+      <div class="pick-grid" id="scGrid"></div>
+      <footer><span class="help" id="scCount"></span><span class="grow"></span><button class="btn btn-solid sm" id="scSave"><span>Save</span></button></footer>
+    </div>
+  </div>
+
+  <div class="dl-pop" id="dlPop" hidden><h4>Downloads</h4><div id="dlList"></div></div>
 
   <!-- Connect All -->
   <div class="modal-bg" id="scan" hidden>
@@ -230,6 +307,11 @@
       <div id="sStores"></div>
       <label class="s-row toggle"><div><b>Add newly installed games automatically</b><small>Steam and Epic games you install show up in your library by themselves.</small></div><input type="checkbox" id="sAutoAdd"></label>
 
+      <h4 class="s-h">Library</h4>
+      <label class="s-row toggle"><div><b>Show filters in the library</b><small>Bookmarks, collections and store chips above your games.</small></div><input type="checkbox" id="sFilters"></label>
+      <div class="s-row"><div><b>Game settings icon</b><small>The button on game cards and game pages. "None" hides it on cards: right-click a card instead.</small></div>
+        <div class="seg-mini" id="sSetIcon"><button data-v="cog" aria-label="Gear"></button><button data-v="sliders" aria-label="Sliders"></button><button data-v="pencil" aria-label="Pencil"></button><button data-v="dots" aria-label="Dots"></button><button data-v="none">None</button></div></div>
+
       <h4 class="s-h">Friends</h4>
       <label for="sSteamKey" class="s-label">Steam Web API key</label>
       <div class="row"><input id="sSteamKey" type="password" spellcheck="false" autocomplete="off" placeholder="Paste your key to see what your Steam friends play"><button class="btn btn-ghost sm" id="sKeyLink"><span>Get a key</span></button></div>
@@ -262,5 +344,7 @@
 <script src="review.js"></script>
 <script src="cards.js"></script>
 <script src="settings.js"></script>
+<script src="store.js"></script>
+<script src="profile.js"></script>
 </body>
 </html>
