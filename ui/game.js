@@ -1,4 +1,4 @@
-/* global drawer, nf, lib, state, $, esc, bgu, artBg, fmt, ago, clock, total, lastPlayed, hours, heroOf, coverOf, fallbackBg, ICON, launch, toast, renderers, DAY, now, openModal, featured, paintBookmark */
+/* global IMG_OK, drawer, nf, lib, state, $, esc, bgu, artBg, fmt, ago, clock, total, lastPlayed, hours, heroOf, coverOf, fallbackBg, ICON, launch, toast, renderers, DAY, now, openModal, featured, paintBookmark */
 // Game page: hero on top, play history / sessions or matches / experiences / news underneath — one screen.
 
 let shownHero = '';
@@ -26,21 +26,34 @@ function renderHeroLive(g) {
   pin.innerHTML = ICON.pin; pin.classList.toggle('on', !!g.pinned);
   pin.setAttribute('aria-label', g.pinned ? 'Unpin from sidebar' : 'Pin to sidebar'); pin.title = pin.getAttribute('aria-label');
 }
+/* hero: the new art fades in over the old one (after it has loaded); title and text slide out, then back in */
 function renderHero(g) {
-  const art = $('#heroArt'), logo = $('#logo');
-  const apply = () => {
-    const h = heroOf(g);
-    art.style.background = h ? `${bgu(h)} center/cover no-repeat` : fallbackBg(g);
+  const key = heroKey(g);
+  if (key === shownHero) return;
+  const switching = !!shownHero && shownHero.split('|')[0] !== g.id;
+  shownHero = key;
+  const box = $('#heroArt'), logo = $('#logo');
+  const copy = document.querySelector('#hero .hero-copy'), stats = document.querySelector('#hero .hero-stats');
+  const h = heroOf(g);
+  const text = () => {
     logo.innerHTML = g.art.logo ? `<img src="${esc(g.art.logo)}" alt="${esc(g.name)}" class="${g.logoMono ? 'logo-mono' : ''}">` : `<span class="t">${esc(g.name)}</span>`;
     const d = $('#desc');
     if (g.desc) { d.textContent = g.desc; d.classList.remove('path'); } else { d.textContent = g.exe; d.classList.add('path'); }
     if (g.art.icon) $('#chipIcon').src = g.art.icon; else $('#chipIcon').removeAttribute('src');
-    art.classList.remove('fade'); logo.classList.remove('swap');
-    shownHero = heroKey(g);
   };
-  if (heroKey(g) === shownHero) return;
-  if (!shownHero || shownHero.split('|')[0] === g.id) return apply();
-  art.classList.add('fade'); logo.classList.add('swap'); setTimeout(apply, 220);
+  const layer = document.createElement('div');
+  layer.className = 'hero-layer';
+  layer.style.background = h ? `${bgu(h)} center/cover no-repeat` : fallbackBg(g);
+  const show = () => {
+    if (shownHero !== key) return;
+    box.appendChild(layer);
+    requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('on')));
+    setTimeout(() => { [...box.children].forEach((c) => { if (c !== layer && shownHero === key) c.remove(); }); }, 900);
+  };
+  if (h && !IMG_OK.has(h)) { const i = new Image(); let done = false; const go2 = () => { if (!done) { done = true; IMG_OK.add(h); show(); } }; i.onload = go2; i.onerror = go2; setTimeout(go2, 1800); i.src = h; } else show();
+  if (!switching) { text(); return; }
+  copy.classList.add('out'); stats.classList.add('out');
+  setTimeout(() => { if (shownHero !== key) return; text(); copy.classList.remove('out'); stats.classList.remove('out'); }, 230);
 }
 
 /* ---------- news (shared with the store page) ---------- */
@@ -145,6 +158,7 @@ async function renderDetail(g, force) {
     $('#dItems').querySelectorAll('[data-url]').forEach((b) => { b.onclick = () => nf.openLink(b.dataset.url); });
   }
   layoutDetail();
+  $('#detail').classList.remove('swap');
   // news lives in a side drawer, opened from the hero (HoYoverse, Fortnite, Riot, Steam)
   const f = await loadNews({ id: g.id }, 'g:' + g.id);
   if (detailFor !== g.id || state.view !== 'game') return;
@@ -170,8 +184,15 @@ $('#ndClose').onclick = () => drawer('#newsDrawer', false);
 renderers.game = (force) => {
   const g = featured();
   if (!g) return;
-  if (force) { renderDetail.auto = false; if (g.id !== renderers.game.last) $('#gNewsBtn').hidden = true; renderers.game.last = g.id; }
-  renderHero(g); renderHeroLive(g);
+  if (force) {
+    renderDetail.auto = false;
+    if (g.id !== renderers.game.last) { $('#gNewsBtn').hidden = true; if (renderers.game.last) $('#detail').classList.add('swap'); }
+    renderers.game.last = g.id;
+  }
+  const switching = shownHero && shownHero.split('|')[0] !== g.id;
+  renderHero(g);
+  // during a switch the numbers change while the hero text is faded out
+  if (switching) setTimeout(() => { if (featured() === g) renderHeroLive(g); }, 230); else renderHeroLive(g);
   renderDetail(g, force);
 };
 renderers.gameTick = () => {

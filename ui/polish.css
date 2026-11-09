@@ -48,11 +48,6 @@
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
 
 /* ---------- titlebar download pill ---------- */
-.dl-pill{transition:background .2s,border-color .2s,transform .15s var(--ease)}
-.dl-pill:hover{background:rgba(158,197,255,.18)}
-.dl-pill:active{transform:scale(.97)}
-.dl-pill.paused{background:rgba(255,255,255,.06);border-color:var(--line2);color:#cfcfd6}
-.dl-pill.paused .dl-ring{background:conic-gradient(#8b8b95 var(--p),rgba(255,255,255,.12) 0)}
 
 /* ---------- drawers ---------- */
 .scrim{position:fixed;inset:0;z-index:140;background:rgba(5,5,8,.45);backdrop-filter:blur(2px);opacity:0;transition:opacity .25s var(--ease)}
@@ -207,3 +202,41 @@
 .s-row input[type=checkbox]::after{transition:transform .3s var(--spring)}
 .seg-mini button{transition:background .2s,color .2s,transform .12s}
 .seg-mini button:active{transform:scale(.94)}
+
+/* ===== 2.3: no flicker, game switching, image fade-in, downloads in the sidebar ===== */
+/* friends animate only on the first paint */
+.fr{animation:none}
+.fr-list.first .fr{animation:rise .4s calc(var(--i,0) * 30ms) var(--ease-out) both}
+
+/* images fade in once loaded; already-loaded ones show instantly */
+@keyframes imgIn{from{opacity:0;filter:blur(6px)}to{opacity:1;filter:none}}
+.img-wait{opacity:0!important}
+.img-in{animation:imgIn .55s var(--ease-out) both}
+
+/* game page: crossfading hero layers + copy slide */
+#heroArt{background:#141418!important;overflow:hidden}
+#heroArt.fade{opacity:1}
+.hero-layer{position:absolute;inset:0;opacity:0;transform:scale(1.045);transition:opacity .75s var(--ease),transform 1.4s var(--ease-out);will-change:opacity,transform}
+.hero-layer.on{opacity:1;transform:none}
+#hero .hero-copy,#hero .hero-stats{transition:opacity .25s var(--ease),transform .35s var(--ease-out)}
+#hero .hero-copy.out{opacity:0;transform:translateY(10px)}
+#hero .hero-stats.out{opacity:0;transform:translateY(8px)}
+#detail > .panel{transition:opacity .3s var(--ease),transform .4s var(--ease-out)}
+#detail.swap > .panel{opacity:.35;transform:translateY(6px)}
+.rail .thumb.active{transition:outline-color .3s,transform .25s var(--spring)}
+
+/* downloads button in the sidebar */
+.dl-btn{position:relative}
+.dl-prog{position:absolute;inset:-3px;width:46px;height:46px;transform:rotate(-90deg);pointer-events:none;opacity:0;transition:opacity .3s}
+.dl-prog circle{fill:none;stroke:rgba(255,255,255,.08);stroke-width:2.2}
+.dl-prog .v{stroke:#9ec5ff;stroke-linecap:round;stroke-dasharray:0 100;transition:stroke-dasharray .8s var(--ease)}
+.dl-btn.busy .dl-prog{opacity:1}
+.dl-btn.busy{color:#dbe8ff}
+.dl-btn.paused .dl-prog .v{stroke:#7d7d88}
+.dl-btn.paused{color:#9a9aa5}
+.dl-btn.indet .dl-prog{animation:spin 1.2s linear infinite}
+.dl-count{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:#9ec5ff;color:#0b0b0d;font:800 9px/16px var(--sans);font-style:normal;text-align:center;box-shadow:0 0 0 2px var(--win)}
+.dl-count[hidden]{display:none}
+.dl-card .bar i,.sg-progress .bar i{transition:width .9s var(--ease)}
+.dl-spark path{transition:d .6s var(--ease)}
+.nav-btn.dl-btn svg.dl-prog{width:46px;height:46px}

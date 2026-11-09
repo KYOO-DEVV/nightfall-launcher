@@ -63,6 +63,11 @@ async function renderFriends() {
   $('#frSub').textContent = `${on.length} online · ${f.filter((x) => x.state === 'ingame').length} playing`;
   const label = (x) => x.state === 'ingame' ? esc(x.game || 'In a game') + (x.detail ? ' · ' + esc(x.detail) : '')
     : x.state === 'offline' ? (x.lastOff ? 'Last online ' + ago(x.lastOff) : 'Offline') : x.state[0].toUpperCase() + x.state.slice(1);
+  // redraw only when something changed, and animate only the first time
+  const key = JSON.stringify(f.slice(0, 40).map((x) => [x.id, x.state, x.game, x.detail, x.avatar]));
+  if (el.dataset.key === key && el.childElementCount) return;
+  el.classList.toggle('first', !el.dataset.key);
+  el.dataset.key = key;
   el.innerHTML = f.length ? f.slice(0, 40).map((x, i) => `<div class="fr ${x.state}" style="--i:${Math.min(i, 12)}">
       <span class="av" style="${x.avatar ? `background-image:${bgu(x.avatar)}` : ''}"><i></i></span>
       <span class="fr-tx"><b>${esc(x.name)}</b><small>${label(x)}</small></span>

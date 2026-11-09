@@ -14,7 +14,6 @@
 <body>
 <header class="titlebar" data-tauri-drag-region>
   <span class="tb-title" data-tauri-drag-region>Nightfall</span>
-  <button class="dl-pill" id="dlPill" hidden><i class="dl-ring" id="dlRing"></i><span id="dlTxt"></span></button>
   <div class="wc">
     <button id="wMin" aria-label="Minimize" data-icon="min"></button>
     <button id="wMax" aria-label="Maximize" data-icon="max"></button>
@@ -30,6 +29,7 @@
     <button class="nav-btn" id="newsBtn" aria-label="News" data-icon="news"></button>
     <i class="rail-ind" id="railInd"></i>
     <div class="stack" id="rail"></div>
+    <button class="nav-btn dl-btn" id="dlBtn" aria-label="Downloads" data-icon="download"><svg class="dl-prog" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20"/><circle class="v" id="dlArc" cx="22" cy="22" r="20" pathLength="100"/></svg><i class="dl-count" id="dlCount" hidden></i></button>
     <button class="nav-btn ghost" id="addBtnRail" aria-label="Add a game" data-icon="plus"></button>
     <button class="nav-btn ghost" id="searchBtn" aria-label="Search" data-icon="search"></button>
     <button class="nav-btn ghost" id="settingsBtn" aria-label="Settings" data-icon="cog"></button>
@@ -95,7 +95,7 @@
     <!-- ================= GAME PAGE (one screen) ================= -->
     <section class="view game" id="game" hidden>
       <div class="hero2" id="hero">
-        <div class="hero-art" id="heroArt"></div>
+        <div class="hero-art no-fade" id="heroArt"></div>
         <div class="hero-stats">
           <div class="hstat"><div class="v"><span id="hTotal">0h</span></div><div class="k">Total played</div></div>
           <div class="hstat"><div class="v"><span id="hSessions">0</span></div><div class="k">Sessions</div></div>

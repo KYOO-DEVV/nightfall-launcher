@@ -139,25 +139,47 @@ function dlCard(d) {
 }
 function paintDownloads() {
   const list = state.downloads || [];
-  const pill = $('#dlPill');
-  pill.hidden = !list.length;
-  if (list.length) {
-    const d = list.find((x) => stateOf(x) === 'downloading' || stateOf(x) === 'installing') || list[0];
-    $('#dlRing').style.setProperty('--p', (d.total ? pctOf(d) : 25) + '%');
-    $('#dlRing').classList.toggle('spin', !d.total);
-    pill.classList.toggle('paused', stateOf(d) === 'paused');
-    $('#dlTxt').textContent = `${d.name}${d.total ? ' · ' + Math.floor(pctOf(d)) + '%' : ''}${d.rate ? ' · ' + rateTxt(d.rate) : stateOf(d) === 'paused' ? ' · paused' : ''}${list.length > 1 ? ` · +${list.length - 1}` : ''}`;
-  }
+  // sidebar button: progress ring around the icon and a count
+  const btn = $('#dlBtn');
+  const active = list.find((x) => stateOf(x) === 'downloading' || stateOf(x) === 'installing') || list[0];
+  btn.classList.toggle('busy', !!list.length);
+  btn.classList.toggle('paused', !!active && stateOf(active) === 'paused');
+  btn.classList.toggle('indet', !!active && !active.total);
+  $('#dlArc').style.strokeDasharray = `${active && active.total ? pctOf(active) : 28} 100`;
+  $('#dlCount').hidden = list.length < 2; $('#dlCount').textContent = list.length;
+  renderers.dlTip = () => (active ? `${active.name} · ${active.total ? Math.floor(pctOf(active)) + '%' : STATE_TXT[stateOf(active)]}${active.rate ? ' · ' + rateTxt(active.rate) : stateOf(active) === 'paused' ? ' · paused' : ''}` : 'Downloads');
   if (!$('#dlDrawer').hidden) {
     const total = list.reduce((t, d) => t + (d.rate || 0), 0);
     $('#dlSum').textContent = list.length ? `${list.length} ${list.length === 1 ? 'item' : 'items'}${total ? ' · ' + rateTxt(total) + ' total' : ''}` : 'Nothing downloading';
-    $('#dlList').innerHTML = list.length ? list.map(dlCard).join('') : `<div class="dr-empty">${ICON.download}<b>No downloads right now</b><p>Install a game from Library → Your stores and its progress shows here.</p></div>`;
+    const box = $('#dlList');
+    if (!list.length) { if (!box.querySelector('.dr-empty')) box.innerHTML = `<div class="dr-empty">${ICON.download}<b>No downloads right now</b><p>Install a game from Library → Your stores and its progress shows here.</p></div>`; }
+    else {
+      box.querySelector('.dr-empty')?.remove();
+      // update cards in place: no re-animation, bars glide to their new width
+      const keep = new Set(list.map((d) => d.key));
+      box.querySelectorAll('.dl-card').forEach((c) => { if (!keep.has(c.dataset.key)) c.remove(); });
+      for (const d of list) {
+        const tmp = document.createElement('div'); tmp.innerHTML = dlCard(d); const fresh = tmp.firstElementChild;
+        const old = [...box.children].find((c) => c.dataset.key === d.key);
+        if (!old) { box.appendChild(fresh); continue; }
+        old.className = fresh.className;
+        patch(old, fresh);
+      }
+    }
     $('#dlSteam').hidden = !list.some((d) => d.store === 'steam');
   }
   paintStoreProgress();
   if (renderers.paintCards) renderers.paintCards();
 }
-$('#dlPill').onclick = (e) => { e.stopPropagation(); drawer('#dlDrawer', true); paintDownloads(); };
+/* copy text / widths / attributes from a freshly built card onto the one on screen, keeping elements (and their images) */
+function patch(a, b) {
+  if (a.nodeType === 3 || b.nodeType === 3) { if (a.textContent !== b.textContent) a.textContent = b.textContent; return; }
+  if (a.tagName !== b.tagName || a.childNodes.length !== b.childNodes.length) { a.replaceWith(b); return; }
+  for (const at of b.attributes) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  for (const at of [...a.attributes]) if (!b.hasAttribute(at.name) && !/^(class|data-waiting)$/.test(at.name)) a.removeAttribute(at.name);
+  [...a.childNodes].forEach((c, i) => patch(c, b.childNodes[i]));
+}
+renderers.paintDownloads = paintDownloads;
 $('#dlClose').onclick = () => drawer('#dlDrawer', false);
 $('#dlSteam').onclick = async () => { const err = await nf.openStore('steam://open/downloads'); if (err) toast(err); };
 

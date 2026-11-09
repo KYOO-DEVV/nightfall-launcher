@@ -27,6 +27,10 @@ use tauri_plugin_updater::UpdaterExt;
 use util::*;
 
 const TICK_MS: u64 = 5000;
+const REPO_URL: &str = "https://github.com/KYOO-DEVV/nightfall-launcher";
+const LOGO_URL: &str = "https://raw.githubusercontent.com/KYOO-DEVV/nightfall-launcher/main/src-tauri/icons/128x128@2x.png";
+/// Nightfall's own Discord application (its name is what Discord shows above the activity); a pasted ID overrides it
+const DEFAULT_DISCORD_ID: &str = "";
 const MIN_SESSION_MS: i64 = 30_000; // ignore blips shorter than this (crash-on-start, launcher hand-offs)
 const GAP_MS: i64 = 60_000; // a longer gap between ticks (sleep / hibernate) splits the session
 
@@ -283,34 +287,40 @@ fn push_presence(core: &Arc<Core>) {
     };
     let before = core.presence.status();
     let test = *core.test_until.lock().unwrap() > now_ms();
+    // shows on your Discord profile under Activity: "Playing <game>" with Nightfall's logo and a GitHub button
+    let github = json!({ "label": "View on GitHub", "url": REPO_URL });
+    let small = json!({ "small_image": LOGO_URL, "small_text": format!("Nightfall Launcher {}", core.app.package_info().version) });
     let activity = if test {
-        Some(json!({ "details": "Nightfall Launcher", "state": "Rich Presence test", "timestamps": { "start": now_ms() / 1000 } }))
+        Some(json!({ "type": 0, "details": "Nightfall Launcher", "state": "Rich Presence test", "status_display_type": 2, "timestamps": { "start": now_ms() / 1000 },
+            "assets": { "large_image": LOGO_URL, "large_text": "Nightfall Launcher" }, "buttons": [github], "instance": false }))
     } else if let Some(g) = game {
         let img = g.appid.map(|a| format!("https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/header.jpg", a))
             .or(g.remote.icon.clone()).or(g.remote.hero.clone());
         let live = g.live.clone();
         let mut assets = serde_json::Map::new();
         match (&live, &img) {
-            (Some(l), _) if l.icon.is_some() => {
-                assets.insert("large_image".into(), json!(l.icon)); assets.insert("large_text".into(), json!(presence::line(&l.name)));
-                if let Some(i) = &img { assets.insert("small_image".into(), json!(i)); assets.insert("small_text".into(), json!(presence::line(&g.name))); }
-            }
+            (Some(l), _) if l.icon.is_some() => { assets.insert("large_image".into(), json!(l.icon)); assets.insert("large_text".into(), json!(presence::line(&l.name))); }
             (_, Some(i)) => { assets.insert("large_image".into(), json!(i)); assets.insert("large_text".into(), json!(presence::line(&g.name))); }
-            _ => {}
+            _ => { assets.insert("large_image".into(), json!(LOGO_URL)); }
         }
-        let url = live.as_ref().and_then(|l| l.url.clone()).or(g.appid.map(|a| format!("https://store.steampowered.com/app/{}", a)));
-        let mut a = json!({
+        for (k, v) in small.as_object().unwrap() { assets.insert(k.clone(), v.clone()); }
+        let game_url = live.as_ref().and_then(|l| l.url.clone()).or(g.appid.map(|a| format!("https://store.steampowered.com/app/{}", a)));
+        let mut buttons = vec![github];
+        if let Some(u) = game_url { buttons.push(json!({ "label": if live.is_some() { "Open experience" } else { "View game" }, "url": u })) }
+        Some(json!({
+            "type": 0,
             "details": presence::line(&g.name),
-            "state": presence::line(&live.as_ref().map(|l| l.name.clone()).unwrap_or_else(|| "Playing via Nightfall".into())),
+            "state": presence::line(&live.as_ref().map(|l| l.name.clone()).unwrap_or_else(|| "Playing with Nightfall".into())),
+            "status_display_type": 2,
             "timestamps": { "start": live.as_ref().map(|l| l.since).unwrap_or(g.open.as_ref().map(|o| o.s).unwrap_or(now_ms())) / 1000 },
-            "assets": assets, "instance": false,
-        });
-        if let Some(u) = url { a["buttons"] = json!([{ "label": if live.is_some() { "Open experience" } else { "View game" }, "url": u }]) }
-        Some(a)
+            "assets": assets, "buttons": buttons, "instance": false,
+        }))
     } else if settings.discord_idle {
-        Some(json!({ "details": "In Nightfall", "state": "Browsing the library" }))
+        Some(json!({ "type": 0, "details": "Browsing the library", "state": "In Nightfall", "assets": { "large_image": LOGO_URL, "large_text": "Nightfall Launcher" }, "buttons": [github] }))
     } else { None };
-    core.presence.send(presence::Desired { enabled: settings.discord_enabled, client_id: settings.discord_client_id.trim().to_string(), activity });
+    let id = settings.discord_client_id.trim();
+    let client_id = if id.is_empty() { DEFAULT_DISCORD_ID.to_string() } else { id.to_string() };
+    core.presence.send(presence::Desired { enabled: settings.discord_enabled, client_id, activity });
     if core.presence.status() != before { core.notify() }
 }
 

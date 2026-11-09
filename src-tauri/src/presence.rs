@@ -80,7 +80,15 @@ impl Presence {
                 let msg = json!({ "cmd": "SET_ACTIVITY", "args": { "pid": std::process::id(), "activity": want.activity.clone().unwrap_or(Value::Null) }, "nonce": format!("{}", crate::util::now_ms()) });
                 let ok = write_frame(f, 1, &msg).is_ok();
                 match (ok, if ok { read_frame(f).ok() } else { None }) {
-                    (true, Some((_, v))) if v["evt"] == "ERROR" => { set(&format!("error:{}", v["data"]["message"].as_str().unwrap_or("Discord rejected the activity"))); sent = Some(want.activity.clone()) }
+                    (true, Some((_, v))) if v["evt"] == "ERROR" => {
+                        // older Discord builds don't know status_display_type: send the activity again without it
+                        let mut a = want.activity.clone();
+                        if let Some(Value::Object(o)) = a.as_mut() { if o.remove("status_display_type").is_some() {
+                            let retry = json!({ "cmd": "SET_ACTIVITY", "args": { "pid": std::process::id(), "activity": a.clone().unwrap_or(Value::Null) }, "nonce": format!("r{}", crate::util::now_ms()) });
+                            if write_frame(f, 1, &retry).is_ok() { if let Ok((_, v2)) = read_frame(f) { if v2["evt"] != "ERROR" { set("on"); sent = Some(want.activity.clone()); continue } } }
+                        } }
+                        set(&format!("error:{}", v["data"]["message"].as_str().unwrap_or("Discord rejected the activity"))); sent = Some(want.activity.clone())
+                    }
                     (true, Some(_)) => { set("on"); sent = Some(want.activity.clone()) }
                     _ => { pipe = None; sent = None; set("waiting"); retry_at = std::time::Instant::now() } // Discord closed or restarted: reconnect
                 }

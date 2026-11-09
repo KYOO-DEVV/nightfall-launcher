@@ -130,7 +130,9 @@ function go(view) {
   $('#newsBtn').classList.toggle('on', view === 'news');
   $('#settingsBtn').classList.toggle('on', view === 'settings');
   moveRailInd();
-  const v = $(VIEWS[view]); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
+  const v = $(VIEWS[view]);
+  if (go.prev !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
+  go.prev = view;
   renderRail();
   renderView(true);
 }
@@ -139,6 +141,7 @@ $('#homeBtn').onclick = () => go('home');
 $('#allBtn').onclick = () => go('all');
 $('#profileBtn').onclick = () => go('profile');
 $('#newsBtn').onclick = () => go('news');
+$('#dlBtn').onclick = () => { drawer('#dlDrawer', true); if (renderers.paintDownloads) renderers.paintDownloads(); };
 /* sliding marker next to the active rail button */
 function moveRailInd() {
   const on = document.querySelector('.rail .nav-btn.on, .rail .profile-btn.on, #rail .thumb.active');
@@ -164,6 +167,7 @@ function tipFor(el, text) {
 }
 tipFor($('#homeBtn'), () => 'Home');
 tipFor($('#newsBtn'), () => 'News');
+tipFor($('#dlBtn'), () => (renderers.dlTip ? renderers.dlTip() : 'Downloads'));
 tipFor($('#profileBtn'), () => (lib.profile && lib.profile.name) || 'Profile');
 tipFor($('#allBtn'), () => 'Library');
 tipFor($('#addBtnRail'), () => 'Add a game');
@@ -351,6 +355,38 @@ $('#scanGo').onclick = async () => {
 };
 $('#hmConnect').onclick = connectAll;
 $('#hmCtaBtn').onclick = connectAll;
+
+/* ---------------- smooth image loading ---------------- */
+const IMG_OK = new Set();
+const urlOf = (el) => { const m = /url\((['"]?)(.*?)\1\)/.exec(el.style.backgroundImage || el.style.background || ''); return m ? m[2] : null; };
+function reveal(el) { el.classList.remove('img-wait'); el.classList.add('img-in'); setTimeout(() => el.classList.remove('img-in'), 600); }
+function watchImage(el) {
+  if (el.tagName === 'IMG') {
+    if (!el.getAttribute('src') || el.complete) { if (el.src) IMG_OK.add(el.src); return; }
+    if (IMG_OK.has(el.src)) return;
+    el.classList.add('img-wait');
+    const done = () => { IMG_OK.add(el.src); reveal(el); };
+    el.addEventListener('load', done, { once: true }); el.addEventListener('error', () => reveal(el), { once: true });
+    return;
+  }
+  const u = urlOf(el);
+  if (!u || IMG_OK.has(u) || el.dataset.waiting === u || el.closest('.no-fade')) return;
+  el.dataset.waiting = u;
+  el.classList.add('img-wait');
+  const i = new Image();
+  i.onload = i.onerror = () => { IMG_OK.add(u); if (el.dataset.waiting === u) { delete el.dataset.waiting; reveal(el); } };
+  i.src = u;
+}
+new MutationObserver((muts) => {
+  for (const m of muts) {
+    if (m.type === 'attributes') { watchImage(m.target); continue; }
+    for (const n of m.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      if (n.tagName === 'IMG' || n.style) watchImage(n);
+      n.querySelectorAll && n.querySelectorAll('img, [style*="url("]').forEach(watchImage);
+    }
+  }
+}).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'src'] });
 
 /* ---------------- render cycle ---------------- */
 const renderers = {}; // filled by the view files
