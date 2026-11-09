@@ -28,7 +28,6 @@ function ownedCard(o) {
   el.innerHTML = `<div class="av-img">${o.cover ? `<img class="cv-img" src="${esc(epicSmall(o.cover))}" alt="" loading="lazy" decoding="async">` : `<span class="nm">${esc(o.name)}</span>`}
       <span class="store ${o.store}">${esc(STORE_LABEL[o.store] || o.store)}</span>${g && g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
     <div class="av-meta"><b title="${esc(o.name)}">${esc(o.name)}</b><small>${o.playMin ? hours(o.playMin) + ' on Steam' : g ? fmt(total(g)) + ' played' : 'Not installed'}${o.last ? ' · ' + ago(o.last) : ''}</small></div>
-    <div class="av-prog" hidden><i></i></div>
     <div class="av-btns"><button class="btn ${g ? 'btn-solid' : 'btn-ghost'} sm av-btn">${g ? 'Play' : 'Install'}</button></div>`;
   el.querySelector('.av-btn').onclick = async (e) => {
     e.stopPropagation();
@@ -43,15 +42,29 @@ const dlKey = (o) => (o.store === 'steam' ? 'steam:' + o.appid : o.store === 'ep
 /* live install progress on store cards */
 function paintCardProgress(el) {
   const d = (state.downloads || []).find((x) => x.key === el.dataset.key);
-  const bar = el.querySelector('.av-prog'); if (!bar) return;
-  bar.hidden = !d;
-  const btn = el.querySelector('.av-btn');
-  if (!d) { if (btn.dataset.dl) { btn.textContent = 'Install'; delete btn.dataset.dl; } return; }
-  const pct = d.total ? Math.min(100, d.done / d.total * 100) : 0;
-  bar.firstElementChild.style.width = (d.total ? pct : 100) + '%';
-  bar.classList.toggle('indet', !d.total);
+  const box = el.querySelector('.av-img'), btn = el.querySelector('.av-btn');
+  if (!box || !btn) return;
+  if (!d) {
+    if (box.classList.contains('dl')) { box.classList.remove('dl', 'paused', 'indet'); box.querySelector('.cv-fill')?.remove(); }
+    if (btn.dataset.dl) { btn.textContent = 'Install'; delete btn.dataset.dl; }
+    return;
+  }
+  // the cover turns grey and fills back up with colour, bottom to top, as the game downloads
+  const pct = d.total ? Math.min(100, (d.done / d.total) * 100) : 0;
+  const img = box.querySelector('.cv-img');
+  let fill = box.querySelector('.cv-fill');
+  if (!fill) {
+    fill = document.createElement('span'); fill.className = 'cv-fill';
+    fill.innerHTML = img ? `<img src="${img.getAttribute('src')}" alt="">` : '';
+    fill.insertAdjacentHTML('beforeend', '<i class="cv-edge"></i>');
+    box.insertBefore(fill, img ? img.nextSibling : box.firstChild);
+  }
+  box.classList.add('dl');
+  box.classList.toggle('paused', d.state === 'paused');
+  box.classList.toggle('indet', !d.total);
+  box.style.setProperty('--fill', (d.total ? pct : 0) + '%');
   btn.dataset.dl = 1;
-  btn.textContent = d.state === 'paused' ? 'Paused' : d.total ? Math.floor(pct) + '%' : 'Installing';
+  btn.textContent = d.state === 'paused' ? `Paused · ${Math.floor(pct)}%` : d.total ? Math.floor(pct) + '%' : 'Installing…';
 }
 renderers.paintCards = () => { if (state.view === 'all' && state.libTab === 'stores') document.querySelectorAll('#avGrid .av-card[data-key]').forEach(paintCardProgress); };
 

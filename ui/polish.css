@@ -300,3 +300,17 @@
 /* profile banner buttons sit at the top, clear of the name and picture */
 .pf-banner-btns{top:46px;bottom:auto;z-index:3}
 .pf-banner-btns .btn{background:rgba(11,11,13,.55);backdrop-filter:blur(10px)}
+
+/* store cards while downloading: grey cover that fills with colour from the bottom up */
+.av-img.dl .cv-img{filter:grayscale(1) brightness(.45) contrast(.9);transition:filter .6s var(--ease)}
+.av-img.dl .nm{opacity:.5}
+.cv-fill{position:absolute;inset:0;z-index:0;pointer-events:none;clip-path:inset(calc(100% - var(--fill,0%)) 0 0 0);transition:clip-path 1.1s var(--ease)}
+.cv-fill img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cv-edge{position:absolute;left:0;right:0;bottom:var(--fill,0%);height:2px;margin-bottom:-1px;background:linear-gradient(90deg,transparent,#fff 20%,#fff 80%,transparent);box-shadow:0 0 14px 2px rgba(158,197,255,.85);opacity:.9;transition:bottom 1.1s var(--ease)}
+.av-img.dl:not(.paused):not(.indet) .cv-edge{animation:edge 1.8s ease-in-out infinite}
+@keyframes edge{50%{opacity:.45;box-shadow:0 0 8px 1px rgba(158,197,255,.5)}}
+.av-img.dl.paused .cv-fill img{filter:saturate(.35) brightness(.85)}
+.av-img.dl.paused .cv-edge{background:rgba(255,255,255,.4);box-shadow:none}
+.av-img.dl.indet .cv-fill{clip-path:none;opacity:.35;animation:breathe 1.6s ease-in-out infinite}
+.av-img.dl.indet .cv-edge{display:none}
+@keyframes breathe{50%{opacity:.7}}
