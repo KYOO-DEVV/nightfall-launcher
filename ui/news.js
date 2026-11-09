@@ -1,4 +1,4 @@
-/* global newsCache, nf, lib, state, $, esc, bgu, toast, renderers, now, DAY, ordered, heroOf, wideOf, ICON, loadNews, TAG, shortDate, select */
+/* global busy, newsCache, nf, lib, state, $, esc, bgu, toast, renderers, now, DAY, ordered, heroOf, wideOf, ICON, loadNews, TAG, shortDate, select */
 // News page: everything new for the games in your library, in one feed.
 
 let nwFilter = 'all', nwData = null, nwAt = 0, nwBusy = false;
@@ -57,4 +57,4 @@ function paintNews(data) {
   document.querySelectorAll('#newsView [data-url]').forEach((x) => { x.onclick = async () => { const err = await nf.openLink(x.dataset.url); if (err) toast(err); }; });
   document.querySelectorAll('#newsView [data-g]').forEach((x) => { x.onclick = () => select(x.dataset.g); });
 }
-$('#nwRefresh').onclick = () => { Object.keys(newsCache).forEach((k) => delete newsCache[k]); nwData = null; renderers.news('refresh'); };
+$('#nwRefresh').onclick = () => busy($('#nwRefresh'), async () => { Object.keys(newsCache).forEach((k) => delete newsCache[k]); nwData = null; nwBusy = false; await renderers.news('refresh'); });

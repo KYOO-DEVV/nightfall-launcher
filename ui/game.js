@@ -53,7 +53,16 @@ function renderHero(g) {
   if (h && !IMG_OK.has(h)) { const i = new Image(); let done = false; const go2 = () => { if (!done) { done = true; IMG_OK.add(h); show(); } }; i.onload = go2; i.onerror = go2; setTimeout(go2, 1800); i.src = h; } else show();
   if (!switching) { text(); return; }
   copy.classList.add('out'); stats.classList.add('out');
-  setTimeout(() => { if (shownHero !== key) return; text(); copy.classList.remove('out'); stats.classList.remove('out'); }, 230);
+  // the new title comes in only once its logo image is ready, so it never pops in after the text
+  const logoReady = new Promise((res) => {
+    if (!g.art.logo || IMG_OK.has(g.art.logo)) return res();
+    const i = new Image(); i.onload = i.onerror = () => { IMG_OK.add(g.art.logo); res(); }; i.src = g.art.logo; setTimeout(res, 1500);
+  });
+  Promise.all([logoReady, new Promise((r) => setTimeout(r, 240))]).then(() => {
+    if (shownHero !== key) return;
+    text();
+    requestAnimationFrame(() => { copy.classList.remove('out'); stats.classList.remove('out'); });
+  });
 }
 
 /* ---------- news (shared with the store page) ---------- */

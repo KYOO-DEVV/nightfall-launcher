@@ -39,14 +39,26 @@ const coverOf = (g) => g.art.cover || g.art.header || g.art.hero;
 const heroOf = (g) => g.art.hero || g.art.header || g.art.cover;
 const wideOf = (g) => g.art.header || g.art.hero || g.art.cover;
 const thumbOf = (g) => g.art.cover || g.art.hero || g.art.header;
+/* portrait card art: the real cover, or (when a game only has wide art) that art blurred behind the logo — never a squeezed crop */
+function tallArt(g, cls = '') {
+  if (g.art.cover) return `<img class="cv-img ${cls}" src="${esc(g.art.cover)}" alt="" loading="lazy" decoding="async">`;
+  const w = g.art.hero || g.art.header;
+  if (w) return `<span class="cv-comp"><span class="cv-blur" style="background-image:${bgu(w)}"></span><span class="cv-wide" style="background-image:${bgu(w)}"></span><span class="lg">${logoHtml(g)}</span></span>`;
+  return `<span class="cv-comp" style="background:${fallbackBg(g)}"><span class="lg">${logoHtml(g)}</span></span>`;
+}
 const artBg = (url, g) => (url ? `${bgu(url)} center/cover` : fallbackBg(g));
 function logoHtml(g, cls = 't') {
   if (g.art.logo) return `<img src="${esc(g.art.logo)}" alt="${esc(g.name)}" class="${g.logoMono ? 'logo-mono' : ''}">`;
   return `<span class="ph-stack">${g.art.icon ? `<img class="ph-icon" src="${esc(g.art.icon)}" alt="">` : ''}<span class="${cls}">${esc(g.name)}</span></span>`;
 }
 
-/* ---------------- icons (one consistent stroke set) ---------------- */
-const P = (d, extra = '') => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+/* ---------------- icons ----------------
+   Nightfall's own icon set (ui/icons/*.png, white on transparent) is drawn through SVG masks,
+   so every icon takes the colour of the text around it. The few icons the set doesn't have are drawn as strokes. */
+const OWN_ICONS = ['cog', 'bookmark', 'news', 'pin', 'play', 'share', 'sparkle', 'link', 'plus', 'refresh', 'search', 'folder', 'home'];
+document.body.insertAdjacentHTML('afterbegin', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${OWN_ICONS.map((n) => `<mask id="mi-${n}" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><image href="icons/${n}.png" x="0" y="0" width="24" height="24"/></mask>`).join('')}</defs></svg>`);
+const M = (n, size = 16) => `<svg class="mi mi-${n}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" fill="currentColor" mask="url(#mi-${n})"/></svg>`;
+const P = (d, extra = '') => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
 const ICON = {
   home: P('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/>'),
   grid: P('<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>'),
@@ -66,7 +78,7 @@ const ICON = {
   pulse: P('<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>'),
   dots: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
   ext: P('<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>'),
-  bookmark: P('<path class="bm" d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4.2-6.5 4.2v-16a1 1 0 0 1 1-1z"/>'),
+
   pin: P('<path d="M9 3.5h6l-1 5 3.5 3.5v2h-11v-2L10 8.5z"/><path d="M12 14v6.5"/>'),
   sliders: P('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
   pencil: P('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
@@ -80,6 +92,10 @@ const ICON = {
   gauge: P('<path d="M12 14l4-4"/><path d="M3.5 18a10 10 0 1 1 17 0"/>'),
   trophy: P('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/>'),
 };
+Object.assign(ICON, {
+  cog: M('cog'), bookmark: M('bookmark'), news: M('news'), pin: M('pin'), play: M('play', 12), share: M('share'), sparkle: M('sparkle'),
+  link: M('link'), plus: M('plus'), refresh: M('refresh'), search: M('search'), grid: M('folder'), folder: M('folder'), home: M('home'),
+});
 /* the Game settings icon is a user choice (Settings → Library) */
 const setIcon = () => { const k = (lib.settings && lib.settings.settingsIcon) || 'cog'; return k === 'none' ? '' : ICON[k] || ICON.cog; };
 function paintSetIcons() {
@@ -355,6 +371,16 @@ $('#scanGo').onclick = async () => {
 };
 $('#hmConnect').onclick = connectAll;
 $('#hmCtaBtn').onclick = connectAll;
+
+/* ---------------- small touches ---------------- */
+// one spin for any refresh icon on click; buttons that wait for work keep spinning while .busy
+document.addEventListener('click', (e) => {
+  const ic = e.target.closest('button')?.querySelector('.mi-refresh');
+  if (!ic) return;
+  ic.classList.remove('spin1'); void ic.getBoundingClientRect(); ic.classList.add('spin1');
+  ic.addEventListener('animationend', () => ic.classList.remove('spin1'), { once: true });
+}, true);
+async function busy(btn, work) { btn.classList.add('busy'); btn.disabled = true; try { return await work(); } finally { btn.classList.remove('busy'); btn.disabled = false; } }
 
 /* ---------------- smooth image loading ---------------- */
 const IMG_OK = new Set();

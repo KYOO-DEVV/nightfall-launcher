@@ -1,4 +1,4 @@
-/* global nf, lib, state, $, esc, toast, renderers, go, STORE_LABEL, ICON */
+/* global busy, nf, lib, state, $, esc, toast, renderers, go, STORE_LABEL, ICON */
 // Settings page (its own view, with a section list on the left), Discord status and the update banner.
 
 const DISCORD_TEXT = {
@@ -116,7 +116,7 @@ $('#sFilters').onchange = (e) => nf.set('showFilters', e.target.checked);
 $('#sSetIcon').querySelectorAll('button').forEach((b) => { b.onclick = async () => { paintIconChoice(b.dataset.v); await nf.set('settingsIcon', b.dataset.v); }; });
 $('#sLogin').onchange = (e) => nf.set('startWithWindows', e.target.checked);
 $('#sTray').onchange = (e) => nf.set('closeToTray', e.target.checked);
-$('#sCheck').onclick = async () => { const err = await nf.checkUpdate(); if (err) toast(err); };
+$('#sCheck').onclick = () => busy($('#sCheck'), async () => { const err = await nf.checkUpdate(); toast(err || (lib.update && lib.update.state === 'available' ? `Version ${lib.update.version} is ready to install` : "You're on the latest version")); });
 
 /* update banner */
 function renderUpdateBar() {

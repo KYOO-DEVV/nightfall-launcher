@@ -240,3 +240,63 @@
 .dl-card .bar i,.sg-progress .bar i{transition:width .9s var(--ease)}
 .dl-spark path{transition:d .6s var(--ease)}
 .nav-btn.dl-btn svg.dl-prog{width:46px;height:46px}
+
+/* ===== 2.4: own icon set, portrait art, banner button, small touches ===== */
+.mi{display:block;flex:none}
+.btn .ic .mi{width:12px;height:12px}
+.nav-btn .mi{width:19px;height:19px}
+.st-nav nav .mi{width:16px;height:16px}
+.chip .mi{width:12px;height:12px}
+
+/* bookmark: dim when off, gold when on */
+.fav-btn .mi{opacity:.55;transition:opacity .2s,transform .3s var(--spring)}
+.fav-btn:hover .mi{opacity:.85}
+.fav-btn.on .mi{opacity:1}
+.fav-btn.pop .mi{animation:bm-pop .5s var(--spring)}
+.av-img .fav-dot .mi{width:15px;height:15px;color:#ffd166;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+
+/* refresh: one turn per click, keeps turning while busy */
+@keyframes turn{to{transform:rotate(360deg)}}
+.mi-refresh.spin1{animation:turn .6s var(--ease-out)}
+.btn.busy .mi-refresh{animation:turn .8s linear infinite}
+.btn.busy{opacity:.8;cursor:progress}
+
+/* little hover touches */
+.nav-btn .mi,.nav-btn svg{transition:transform .3s var(--spring)}
+#settingsBtn:hover .mi{transform:rotate(60deg)}
+#addBtnRail:hover .mi,#hmAdd:hover .mi{transform:rotate(90deg)}
+#searchBtn:hover .mi{transform:scale(1.12) rotate(-8deg)}
+#homeBtn:hover .mi{transform:translateY(-1.5px)}
+#newsBtn:hover .mi,.news-btn:hover .mi{transform:rotate(-6deg) scale(1.06)}
+#hmReview:hover .mi{animation:twinkle .7s var(--ease)}
+@keyframes twinkle{40%{transform:scale(1.3) rotate(12deg)}}
+#playBtn:hover .ic .mi,.av-btn:hover .mi{transform:translateX(1.5px)}
+#playBtn .ic .mi{transition:transform .25s var(--spring)}
+#shareGameBtn:hover .mi,#pfShare:hover .mi{transform:translateY(-2px)}
+#shareGameBtn .mi,#pinBtn .mi{transition:transform .3s var(--spring)}
+#pinBtn:hover .mi{transform:rotate(-20deg)}
+#pinBtn.on .mi{transform:rotate(-35deg)}
+#hmConnect:hover .ic .mi,#hmCtaBtn:hover .ic .mi{transform:rotate(-45deg)}
+#hmConnect .ic .mi,#hmCtaBtn .ic .mi{transition:transform .35s var(--spring)}
+.search-pop:not([hidden]){animation:rise .25s var(--ease-out) both}
+.tip.show{transform:translateX(2px)}
+.chip{transition:background .2s,color .2s,transform .12s var(--ease)}
+.chip:active{transform:scale(.95)}
+.toast.show{box-shadow:0 18px 40px rgba(0,0,0,.45)}
+
+/* portrait art without a tall cover: wide art blurred behind, the art itself in the middle, the logo on top */
+.cv-comp{position:absolute;inset:0;display:block;overflow:hidden;background:#141418}
+.cv-blur{position:absolute;inset:-20px;background:center/cover;filter:blur(18px) saturate(1.2) brightness(.55);transform:scale(1.1)}
+.cv-wide{position:absolute;left:0;right:0;top:50%;height:46%;transform:translateY(-58%);background:center/cover;box-shadow:0 14px 30px rgba(0,0,0,.5)}
+.cv-comp .lg{position:absolute;left:0;right:0;bottom:12%;display:grid;place-items:center;padding:0 12px;text-align:center}
+.cv-comp .lg img{max-width:82%;max-height:52px;object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.7))}
+.cv-comp .lg .t{font:800 15px/1.1 var(--display);letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.cv-comp .ph-stack{display:flex;flex-direction:column;align-items:center;gap:8px}
+.cv-comp .ph-icon{width:34px;height:34px;border-radius:9px}
+.pf-card .im,.pick-card .im{position:relative;overflow:hidden}
+.pf-card .im .cv-img,.pick-card .im .cv-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pick-card .im i{z-index:2}
+
+/* profile banner buttons sit at the top, clear of the name and picture */
+.pf-banner-btns{top:46px;bottom:auto;z-index:3}
+.pf-banner-btns .btn{background:rgba(11,11,13,.55);backdrop-filter:blur(10px)}

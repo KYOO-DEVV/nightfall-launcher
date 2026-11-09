@@ -1,4 +1,4 @@
-/* global nf, lib, state, $, esc, bgu, fmt, total, ordered, coverOf, heroOf, gameById, logoHtml, fallbackBg, within, select, toast, renderers, modal, ICON */
+/* global tallArt, nf, lib, state, $, esc, bgu, fmt, total, ordered, coverOf, heroOf, gameById, logoHtml, fallbackBg, within, select, toast, renderers, modal, ICON */
 // Profile: your picture, banner, name, bio, headline stats and a showcase of games you pick.
 
 const prof = () => lib.profile || { name: 'Player', showcase: [] };
@@ -42,8 +42,7 @@ renderers.profile = (force) => {
     return;
   }
   grid.innerHTML = show.map((g) => {
-    const c = coverOf(g);
-    return `<button class="pf-card" data-id="${g.id}" title="${esc(g.name)}"><span class="im" style="${c ? `background-image:${bgu(c)}` : `background:${fallbackBg(g)}`}">${c ? '' : `<span class="lg">${logoHtml(g)}</span>`}</span>
+    return `<button class="pf-card" data-id="${g.id}" title="${esc(g.name)}"><span class="im">${tallArt(g)}</span>
       <span class="tx"><b>${esc(g.name)}</b><small>${total(g) ? fmt(total(g)) + ' played' : 'Not played yet'}</small></span></button>`;
   }).join('');
   grid.dataset.n = show.length;
@@ -68,8 +67,8 @@ function openPicker() {
 }
 function paintPicker() {
   $('#scGrid').innerHTML = ordered('most').map((g) => {
-    const i = picked.indexOf(g.id), c = coverOf(g);
-    return `<button class="pick-card ${i >= 0 ? 'on' : ''}" data-id="${g.id}"><span class="im" style="${c ? `background-image:${bgu(c)}` : `background:${fallbackBg(g)}`}">${i >= 0 ? `<i>${i + 1}</i>` : ''}</span><b>${esc(g.name)}</b></button>`;
+    const i = picked.indexOf(g.id);
+    return `<button class="pick-card ${i >= 0 ? 'on' : ''}" data-id="${g.id}"><span class="im">${tallArt(g)}${i >= 0 ? `<i>${i + 1}</i>` : ''}</span><b>${esc(g.name)}</b></button>`;
   }).join('') || '<p class="help">Add games to your library first.</p>';
   $('#scCount').textContent = `${picked.length} of 12 picked`;
   $('#scGrid').querySelectorAll('[data-id]').forEach((b) => {

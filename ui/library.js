@@ -1,4 +1,4 @@
-/* global nf, lib, state, $, esc, bgu, artBg, fmt, ago, total, lastPlayed, hours, ordered, coverOf, gameById, logoHtml, ICON, launch, select, toast, renderers, STORE_LABEL, setIcon, openModal */
+/* global busy, tallArt, nf, lib, state, $, esc, bgu, artBg, fmt, ago, total, lastPlayed, hours, ordered, coverOf, gameById, logoHtml, ICON, launch, select, toast, renderers, STORE_LABEL, setIcon, openModal */
 // Library: games on this PC (with bookmarks & collections) and everything you own on your stores.
 
 function movePill() { const b = $('#libTabs [aria-selected="true"]'); if (!b) return; $('#libPill').style.width = b.offsetWidth + 'px'; $('#libPill').style.transform = `translateX(${b.offsetLeft}px)`; }
@@ -10,8 +10,7 @@ window.addEventListener('resize', movePill);
 function mineCard(g) {
   const el = document.createElement('div');
   el.className = 'av-card installed';
-  const cv = coverOf(g);
-  el.innerHTML = `<div class="av-img" style="${cv ? '' : `background:${artBg(null, g)}`}">${cv ? `<img class="cv-img" src="${esc(cv)}" alt="" loading="lazy" decoding="async">` : `<div class="lg">${logoHtml(g)}</div>`}
+  el.innerHTML = `<div class="av-img">${tallArt(g)}
       <span class="store mine">${esc(STORE_LABEL[g.source] || 'PC')}</span>${g.fav ? `<span class="fav-dot">${ICON.bookmark}</span>` : ''}${g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
     <div class="av-meta"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${total(g) ? fmt(total(g)) + ' played' : 'Not played yet'}${lastPlayed(g) ? ' · ' + ago(lastPlayed(g)) : ''}</small></div>
     <div class="av-btns"><button class="btn btn-solid sm av-btn">${g.open ? 'Running' : 'Play'}</button>${setIcon() ? `<button class="btn btn-ghost sm icon-only av-more" aria-label="Game settings" title="Game settings">${setIcon()}</button>` : ''}</div>`;
@@ -116,4 +115,4 @@ renderers.all = async (force) => {
 };
 $('#avQ').oninput = () => renderers.all(true);
 $('#avSort').onchange = () => renderers.all(true);
-$('#avRefresh').onclick = () => renderers.all('refresh');
+$('#avRefresh').onclick = () => busy($('#avRefresh'), () => renderers.all('refresh'));

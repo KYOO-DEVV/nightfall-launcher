@@ -118,6 +118,12 @@ fn corners_transparent(file: &str) -> bool {
     [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)].iter().all(|&(x, y)| img.get_pixel(x, y)[3] < 20)
 }
 
+/// "Roblox Player" → "Roblox", "Minecraft Launcher" → "Minecraft"
+pub fn clean_title(name: &str) -> String {
+    let t = Regex::new(r"(?i)\s+(player|launcher|client|beta|\(beta\))$").unwrap().replace(name.trim(), "").trim().to_string();
+    if t.chars().count() < 2 { name.trim().to_string() } else { t }
+}
+
 /* ---------- Steam ---------- */
 pub fn local_steam_app(exe: &str) -> Option<(i64, Option<String>)> {
     let mut dir = Path::new(exe).parent().map(PathBuf::from);
@@ -270,7 +276,9 @@ pub async fn wiki_art(g: &mut Game, dir: &Path) -> bool {
         if let Ok(s) = get_json(&format!("https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=4&srsearch={}", urlencoding::encode(&format!("{} video game", clean)))).await {
             for hit in s["query"]["search"].as_array().cloned().unwrap_or_default() {
                 let t = hit["title"].as_str().unwrap_or("");
-                if !norm(t).contains(&norm(&clean)) { continue }
+                // the article must be this game, not a spin-off ("Minecraft" ≠ "Minecraft Legends")
+                let (nt, nc) = (norm(t), norm(&clean));
+                if nt != nc && nt != format!("{}videogame", nc) { continue }
                 let q = wiki_summary(t).await;
                 if q.as_ref().map(is_art).unwrap_or(false) { p = q; break }
             }
@@ -279,7 +287,8 @@ pub async fn wiki_art(g: &mut Game, dir: &Path) -> bool {
     let Some(p) = p.filter(is_art) else { return false };
     let (w, h) = (p["originalimage"]["width"].as_f64().unwrap_or(1.0), p["originalimage"]["height"].as_f64().unwrap_or(1.0));
     let kind = if w / h > 1.45 { "logo" } else { "cover" };
-    if (kind == "logo" && g.custom.logo) || (kind == "cover" && g.custom.cover) { return false }
+    // never replace a cover that came from a store
+    if (kind == "logo" && g.custom.logo) || (kind == "cover" && (g.custom.cover || g.art.cover.is_some())) { return false }
     let Some(file) = download_as(p["originalimage"]["source"].as_str().unwrap_or(""), dir, &format!("wiki-{}", kind)).await else { return false };
     if kind == "logo" {
         let t = trim_alpha(&file);

@@ -158,6 +158,8 @@ fn queue_enrich(core: Arc<Core>, id: String, lookup_name: bool) {
         let out = art::enrich(g, core.art.clone(), lookup_name).await;
         { let mut db = core.db.lock().unwrap(); if let Some(g) = db.by_id(&id) { merge_enriched(g, out, lookup_name) } }
         core.mark(); core.notify();
+        let owned = core.owned.lock().unwrap().clone();
+        if let Some((_, _, games)) = owned { borrow_covers(&core, &games).await }
     });
 }
 fn resolve_lnk(p: &str) -> Option<String> {
@@ -185,7 +187,7 @@ fn add_paths(core: &Arc<Core>, paths: Vec<String>) -> Vec<String> {
         let (c, id, exe) = (core.clone(), id.clone(), exe.clone());
         tauri::async_runtime::spawn(async move {
             let name = tokio::task::spawn_blocking(move || art::guess_name(&exe)).await.unwrap_or_default();
-            if !name.is_empty() { if let Some(g) = c.db.lock().unwrap().by_id(&id) { g.name = name } }
+            if !name.is_empty() { if let Some(g) = c.db.lock().unwrap().by_id(&id) { g.name = art::clean_title(&name) } }
             c.notify();
             queue_enrich(c, id, true);
         });
@@ -207,7 +209,7 @@ fn connect_items(core: &Arc<Core>, items: Vec<scan::Item>) -> Vec<String> {
             if already_in(&db, &it) { continue }
             let procs = if it.procs.is_empty() { vec![Path::new(&it.exe).file_name().map(|s| s.to_string_lossy().to_lowercase()).unwrap_or_default()] } else { it.procs.clone() };
             let g = Game { id: new_id(6), exe: it.exe, dir: it.dir, source: Some(it.source), proc_: procs.join(",").to_lowercase(), launch: it.launch, appid: it.appid,
-                name: it.name, store_icon: it.store_icon, added_at: now_ms(), status: "searching".into(), art_rev: 4, ..Default::default() };
+                name: art::clean_title(&it.name), store_icon: it.store_icon, added_at: now_ms(), status: "searching".into(), art_rev: 5, ..Default::default() };
             ids.push(g.id.clone());
             db.games.push(g);
         }
@@ -614,9 +616,25 @@ async fn refresh_owned(core: &Arc<Core>, force: bool) -> (Vec<libraries::Account
             if let Some(o) = g.appid.and_then(|a| games.iter().find(|x| x.appid == Some(a))) { g.steam_min = o.play_min }
         }
     }
+    borrow_covers(core, &games).await;
     core.mark();
     *core.owned.lock().unwrap() = Some((now_ms(), accounts.clone(), games.clone()));
     (accounts, games)
+}
+/// games without a portrait cover (HoYoverse, launchers…) borrow the one from your Steam / Epic library
+async fn borrow_covers(core: &Arc<Core>, games: &[libraries::Owned]) {
+    let need: Vec<(String, String)> = {
+        let db = core.db.lock().unwrap();
+        db.games.iter().filter(|g| g.art.cover.is_none() && !g.custom.cover)
+            .filter_map(|g| games.iter().find(|o| o.cover.is_some() && (norm(&o.name) == norm(&g.name) || (o.appid.is_some() && o.appid == g.appid))).map(|o| (g.id.clone(), o.cover.clone().unwrap()))).collect()
+    };
+    for (id, url) in need {
+        let url = if url.contains("epicgames.com") { format!("{}{}h=900&w=600&resize=1", url, if url.contains('?') { "&" } else { "?" }) } else { url };
+        if let Some(f) = download_as(&url, &core.art.join(&id), "cover").await {
+            if let Some(g) = core.db.lock().unwrap().by_id(&id) { g.art.cover = Some(f); g.art_ver = now_ms(); }
+            core.notify();
+        }
+    }
 }
 #[tauri::command]
 async fn owned_get(core: C<'_>, force: bool) -> R<Value> {
@@ -812,9 +830,9 @@ fn main() {
             // re-fetch art for games added offline, and once for games from 1.x so they get the newest sources
             let ids: Vec<String> = {
                 let mut db = core.db.lock().unwrap();
-                // art_rev 4: sharper 256 px icons, and the official icon when the exe has none
-                db.games.iter_mut().filter(|g| g.status == "offline" || g.status == "searching" || g.art_rev < 4)
-                    .map(|g| { g.art_rev = 4; g.id.clone() }).collect()
+                // art_rev 5: sharp icons, store covers kept over Wikipedia's, tidier names ("Roblox Player" → "Roblox")
+                db.games.iter_mut().filter(|g| g.status == "offline" || g.status == "searching" || g.art_rev < 5)
+                    .map(|g| { if g.art_rev < 5 { g.name = art::clean_title(&g.name) } g.art_rev = 5; g.id.clone() }).collect()
             };
             for id in ids { queue_enrich(core.clone(), id, false) }
             // updates: shortly after start, then every 6 hours
