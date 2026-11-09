@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'none'">
+<title>Nightfall Launcher</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="home.css">
+<link rel="stylesheet" href="views.css">
+</head>
+<body>
+<div class="drag"></div>
+<div class="window" id="win">
+  <nav class="rail" aria-label="Library">
+    <button class="avatar" id="homeBtn" aria-label="Home">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-5h-5v5H4z"/></svg>
+    </button>
+    <button class="avatar" id="allBtn" aria-label="All your games">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
+    </button>
+    <div class="stack" id="rail"></div>
+    <button class="search" id="addBtnRail" aria-label="Add a game">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="search" id="searchBtn" aria-label="Search library">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    </button>
+    <button class="search" id="settingsBtn" aria-label="Settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+    <div class="tip" id="tip"></div>
+  </nav>
+
+  <main class="main" id="main">
+    <!-- home -->
+    <section class="home" id="home">
+      <header class="home-head">
+        <div class="hh-text">
+          <p class="eyebrow" id="hmDate"></p>
+          <h1 id="hmGreet">Good evening</h1>
+          <p class="sub" id="hmSub"></p>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="hmReview"><span id="hmReviewTxt">Year in review</span><span class="ic"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></span></button>
+          <button class="btn btn-ghost" id="hmAdd"><span>Add a game</span><span class="ic"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M12 5v14M5 12h14"/></svg></span></button>
+          <button class="btn btn-solid" id="hmConnect"><span>Connect All</span><span class="ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></span></button>
+        </div>
+      </header>
+
+      <div class="home-cta" id="hmCta" hidden>
+        <div class="cta-copy">
+          <h2>Connect your games</h2>
+          <p>Connect All looks through the launchers on this PC for installed games, then adds them with their official artwork and starts tracking your play time. You choose what gets added.</p>
+          <ul class="launchers">
+            <li>Steam</li><li>Epic Games</li><li>GOG</li><li>Ubisoft Connect</li><li>Riot Games</li><li>HoYoPlay</li><li>Battle.net</li><li>EA app</li><li>Rockstar</li><li>Roblox</li>
+          </ul>
+          <div class="actions">
+            <button class="btn btn-solid" id="hmCtaBtn"><span>Connect All</span><span class="ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></span></button>
+            <span class="hint">or drop any game's .exe into this window</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="hmBody">
+        <div class="row-head"><h2>Jump back in</h2></div>
+        <div class="jump" id="hmJump"></div>
+
+        <div class="row-head"><h2>Recently played</h2><button class="link" id="hmSeeAll">Open library</button></div>
+        <div class="row" id="hmRecent"></div>
+
+        <div class="split">
+          <div class="panel">
+            <div class="row-head"><h2>Most played</h2><span class="muted">All time</span></div>
+            <ol class="rank" id="hmRank"></ol>
+          </div>
+          <div class="panel">
+            <div class="row-head"><h2>This week</h2><span class="muted" id="hmWeekTotal"></span></div>
+            <div class="week" id="hmWeek"></div>
+            <div class="week-nums">
+              <div><b id="hmWSess">0</b><span>Sessions</span></div>
+              <div><b id="hmWGames">0</b><span>Games played</span></div>
+              <div><b id="hmWAvg">0m</b><span>Avg. session</span></div>
+              <div><b id="hmWShots">0</b><span>Screenshots</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="hmFavWrap" hidden>
+          <div class="row-head"><h2>Favorites</h2></div>
+          <div class="row" id="hmFav"></div>
+        </div>
+        <div id="hmCols"></div>
+
+        <div class="row-head"><h2>Recently added</h2></div>
+        <div class="row" id="hmAdded"></div>
+
+        <div id="hmOwnedWrap" hidden>
+          <div class="row-head"><h2>From your Steam &amp; Epic libraries</h2><button class="link" id="hmOwnedAll">See all</button></div>
+          <div class="row" id="hmOwned"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- empty library -->
+    <section class="hero empty" id="empty" hidden>
+      <div class="empty-glow"></div>
+      <div class="empty-copy">
+        <span class="chip">Library · 0 games</span>
+        <h1>Your library is empty</h1>
+        <p>Add a game's <b>.exe</b> and Nightfall finds its official artwork and icon, then tracks every minute you play it.</p>
+        <div class="actions">
+          <button class="btn btn-solid" id="addBtnEmpty"><span>Add a game</span><span class="ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg></span></button>
+          <span class="hint">or drop .exe files anywhere in this window</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- featured game -->
+    <section class="hero" id="hero" hidden>
+      <div class="hero-art" id="heroArt"></div>
+      <div class="hero-stats">
+        <div class="hstat"><div class="v"><span id="hTotal">0h</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="k">Total played</div></div>
+        <div class="hstat"><div class="v"><span id="hSessions">0</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12h4l2-5 4 10 2-5h4"/></svg></div><div class="k">Sessions</div></div>
+      </div>
+      <div class="hero-copy">
+        <span class="chip" id="chip"><img id="chipIcon" alt=""><span id="chipTxt"></span></span>
+        <div class="logo" id="logo"></div>
+        <p class="desc" id="desc"></p>
+        <div class="actions">
+          <button class="btn btn-ghost icon-only" id="favBtn" aria-label="Add to favorites"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></button>
+          <button class="btn btn-ghost" id="setBtn"><span>Game settings</span><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span></button>
+          <button class="btn btn-solid" id="playBtn"><span id="playTxt">Play</span><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- per-game detail: sessions, Roblox experiences, Minecraft instances -->
+    <section class="section detail" id="detail" hidden>
+      <div class="d-grid">
+        <div class="panel">
+          <div class="row-head"><h2>Play history</h2><span class="muted" id="dHistSub"></span></div>
+          <div class="d-chart" id="dChart"></div>
+          <div class="d-facts" id="dFacts"></div>
+          <ol class="d-sessions" id="dSessions"></ol>
+        </div>
+        <div class="panel" id="dSubPanel" hidden>
+          <div class="row-head"><h2 id="dSubTitle">Experiences</h2><span class="muted" id="dSubSrc"></span></div>
+          <div class="d-live" id="dLive" hidden></div>
+          <ol class="d-items" id="dItems"></ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- every game you own on Steam and Epic -->
+    <section class="page" id="allView" hidden>
+      <header class="page-head">
+        <div><p class="eyebrow" id="avEyebrow">Your libraries</p><h1>All games</h1><p class="sub" id="avSub">Reading your Steam and Epic libraries…</p></div>
+        <div class="actions"><button class="btn btn-ghost" id="avRefresh"><span>Refresh</span></button></div>
+      </header>
+      <div class="av-tools">
+        <div class="chips" id="avChips"></div>
+        <input id="avQ" type="search" placeholder="Search your games" autocomplete="off">
+      </div>
+      <div class="av-grid" id="avGrid"></div>
+    </section>
+
+    <!-- year in review -->
+    <section class="page review" id="reviewView" hidden></section>
+
+    <section class="section" id="libSection">
+      <div class="sec-head">
+        <h2>Library <span class="count" id="count"></span></h2>
+        <div class="seg" role="tablist" id="seg">
+          <i class="pill" id="pill"></i>
+          <button role="tab" aria-selected="true" data-k="recent">Recently Played</button>
+          <button role="tab" aria-selected="false" data-k="most">Most Played</button>
+          <button role="tab" aria-selected="false" data-k="added">Recently Added</button>
+        </div>
+      </div>
+      <div class="chips lib-chips" id="libChips"></div>
+      <div class="cards" id="cards"></div>
+
+      <h2 class="h3">Your Weekly Stats</h2>
+      <div class="stats">
+        <div class="tile t-hours"><div class="body"><span class="u"><span id="wHours">0h</span> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="bars" id="bars"></div></div><div class="k">Hours played</div></div>
+        <div class="tile"><div class="body"><span class="u"><span id="wNew">0</span> <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12a4 4 0 0 1 4 4v1a4 4 0 0 1-7 2.6l-.6-.6H9.6l-.6.6A4 4 0 0 1 2 13v-1a4 4 0 0 1 4-4Z"/><path d="M7 11v3M5.5 12.5h3M16 11.5h.01M18 13.5h.01"/></svg></span></div><div class="k">New games</div></div>
+        <div class="tile"><div class="body"><span class="u"><span id="wSessions">0</span> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12h4l2-5 4 10 2-5h4"/></svg></span></div><div class="k">Sessions</div></div>
+        <div class="tile t-fav"><div class="body fav"><i class="cv" id="favCv"></i><div><div class="n" id="favName">No games played yet</div><div class="p" id="favSub">Play something this week</div></div></div><div class="k">Favorite game</div></div>
+        <div class="tile"><div class="body"><span class="u"><span id="wAvg">0m</span> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span></div><div class="k">Avg. session</div></div>
+        <div class="tile"><div class="body"><span class="u"><span id="wShots">0</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span></div><div class="k">Screenshots</div></div>
+      </div>
+      <p class="foot" id="foot"></p>
+    </section>
+  </main>
+
+  <div class="search-pop" id="searchPop" hidden>
+    <input id="q" type="search" placeholder="Search your library" autocomplete="off">
+    <ul id="results"></ul>
+  </div>
+
+  <div class="drop" id="drop" hidden><div><b>Drop to add</b><span>.exe or shortcut files</span></div></div>
+
+  <div class="modal-bg" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+      <header><img id="mIcon" alt=""><h3 id="mTitle">Game settings</h3><button class="x" id="mClose" aria-label="Close">×</button></header>
+      <label for="mName">Name</label>
+      <input id="mName" type="text">
+      <label for="mProc">Tracked process</label>
+      <input id="mProc" type="text" spellcheck="false">
+      <p class="help">Play time counts while this process is running. If the game starts through a separate launcher, put the real game's .exe name here (separate several with commas).</p>
+      <label for="mQuery">Artwork</label>
+      <div class="row"><input id="mQuery" type="text" placeholder="Search Steam for this game"><button class="btn btn-ghost sm" id="mSearch"><span>Search</span></button></div>
+      <ul class="art-results" id="mResults"></ul>
+      <div class="row wrap">
+        <button class="btn btn-ghost sm" id="mCover"><span>Use my own cover</span></button>
+        <button class="btn btn-ghost sm" id="mHeroImg"><span>Use my own background</span></button>
+        <button class="btn btn-ghost sm" id="mLogo"><span>Use my own logo</span></button>
+        <button class="btn btn-ghost sm" id="mRefetch"><span>Fetch art again</span></button>
+      </div>
+      <label for="mNewCol">Collections</label>
+      <div class="col-list" id="mCols"></div>
+      <div class="row"><input id="mNewCol" type="text" placeholder="New collection, e.g. Co-op with friends" maxlength="40"><button class="btn btn-ghost sm" id="mAddCol"><span>Create</span></button></div>
+      <footer>
+        <button class="btn btn-ghost sm" id="mShow"><span>Show file</span></button>
+        <button class="btn btn-danger sm" id="mRemove"><span>Remove from library</span></button>
+        <span class="grow"></span>
+        <button class="btn btn-solid sm" id="mSave"><span>Save</span></button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="scan" hidden>
+    <div class="modal scan" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+      <header><h3 id="scanTitle">Connect All</h3><button class="x" id="scanClose" aria-label="Close">×</button></header>
+      <div id="scanBody"></div>
+      <footer id="scanFoot" hidden>
+        <button class="btn btn-ghost sm" id="scanToggle"><span>Select none</span></button>
+        <button class="btn btn-ghost sm" id="scanAgain"><span>Scan again</span></button>
+        <span class="grow"></span>
+        <button class="btn btn-solid sm" id="scanGo"><span>Connect</span></button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- app settings -->
+  <div class="modal-bg" id="settings" hidden>
+    <div class="modal settings" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+      <header><h3 id="sTitle">Settings</h3><button class="x" id="sClose" aria-label="Close">×</button></header>
+
+      <h4 class="s-h">Accounts</h4>
+      <div class="s-row"><div><b>Steam</b><small id="sSteam">Looking for your Steam account…</small></div><span class="tag-ok" id="sSteamTag" hidden>Connected</span></div>
+      <div class="s-row"><div><b>Epic Games</b><small id="sEpic">Looking for the Epic Games Launcher…</small></div><span class="tag-ok" id="sEpicTag" hidden>Connected</span></div>
+      <label class="s-row toggle"><div><b>Add newly installed games automatically</b><small>Steam and Epic games you install show up in your library by themselves.</small></div><input type="checkbox" id="sAutoAdd"></label>
+
+      <h4 class="s-h">Discord</h4>
+      <label class="s-row toggle"><div><b>Show what I'm playing on Discord</b><small id="sDiscordState">Off</small></div><input type="checkbox" id="sDiscord"></label>
+      <label for="sClientId" class="s-label">Discord Application ID</label>
+      <input id="sClientId" type="text" inputmode="numeric" placeholder="e.g. 1234567890123456789" spellcheck="false">
+      <p class="help">Create one at discord.com/developers/applications → New Application (name it "Nightfall" or anything you want to show), then copy its Application ID here. Discord's desktop app must be open.</p>
+
+      <h4 class="s-h">General</h4>
+      <label class="s-row toggle"><div><b>Start with Windows</b><small>Opens hidden in the tray so tracking never misses a session.</small></div><input type="checkbox" id="sLogin"></label>
+      <label class="s-row toggle"><div><b>Keep tracking when the window is closed</b><small>Closing hides Nightfall to the tray instead of quitting.</small></div><input type="checkbox" id="sTray"></label>
+
+      <h4 class="s-h">Updates</h4>
+      <div class="s-row"><div><b id="sVersion">Nightfall</b><small id="sUpdate">—</small></div><button class="btn btn-ghost sm" id="sCheck"><span>Check now</span></button></div>
+    </div>
+  </div>
+
+  <!-- update ready -->
+  <div class="upd-bar" id="updBar" hidden><span id="updTxt">An update is ready.</span><button class="btn btn-solid sm" id="updGo"><span>Restart to update</span></button></div>
+
+  <div class="toast" id="toast" role="status"></div>
+</div>
+<script src="renderer.js"></script>
+<script src="home.js"></script>
+<script src="views.js"></script>
+</body>
+</html>
