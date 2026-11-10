@@ -27,6 +27,8 @@ function storeTile(o) {
   b.innerHTML = `<div class="im" style="${o.header || o.hero || o.cover ? `background:${bgu(o.header || o.hero || o.cover)} center/cover` : ''}"><span class="badge store">${esc(o.store === 'steam' ? 'Steam' : o.store === 'epic' ? 'Epic' : o.store.toUpperCase())}</span>
       <button class="play inst" aria-label="Install ${esc(o.name)}">Install</button></div>
     <div class="n">${esc(o.name)}</div><div class="p">${o.playMin ? hours(o.playMin) + ' on Steam' : 'Not installed'}${o.last ? ' · ' + ago(o.last) : ''}</div>`;
+  b.tabIndex = 0; b.setAttribute('role', 'button');
+  b.onclick = () => renderers.openStorePage(o);
   b.querySelector('.inst').onclick = async (e) => { e.stopPropagation(); const err = await nf.openStore(o.install); toast(err || `Opening ${o.store === 'steam' ? 'Steam' : o.store === 'epic' ? 'the Epic Games Launcher' : 'the store app'} to install ${o.name}.`); };
   return b;
 }
@@ -34,8 +36,24 @@ function shelfTabs() {
   const tabs = [['recent', 'Recently played'], ['fav', 'Bookmarks']];
   for (const c of lib.collections || []) if (c.games.some(gameById)) tabs.push(['col:' + c.id, c.name]);
   tabs.push(['added', 'Recently added']);
+  if (forgotten(true)) tabs.push(['forgot', 'Rediscover']);
   if (state.owned && state.owned.games.some((x) => !x.gameId)) tabs.push(['stores', 'From your stores']);
   return tabs;
+}
+/* games you liked and haven't touched in two months: installed ones first, then ones waiting in your stores */
+const FORGOT_MS = 60 * DAY;
+function idleText(t) {
+  const m = Math.floor((now() - t) / (30 * DAY));
+  return m >= 24 ? `Not played for ${Math.floor(m / 12)} years` : m >= 12 ? 'Not played for over a year' : `Not played for ${Math.max(2, m)} months`;
+}
+function forgotten(justAsk) {
+  const cut = now() - FORGOT_MS;
+  const mine = ordered('most').filter((g) => total(g) >= 30 * 6e4 && lastPlayed(g) && lastPlayed(g) < cut);
+  const owned = state.owned ? state.owned.games.filter((o) => !o.gameId && (o.header || o.hero || o.cover) && o.playMin >= 120 && o.last && o.last < cut) : [];
+  if (justAsk) return mine.length + owned.length > 0;
+  const a = mine.slice(0, 8).map((g) => { const t = gameTile(g); const p = t.querySelector('.p'); p.removeAttribute('data-live'); p.textContent = `${fmt(total(g))} played · ${idleText(lastPlayed(g))}`; return t; });
+  const b = owned.sort((x, y) => y.playMin - x.playMin).slice(0, 16 - a.length).map((o) => { const t = storeTile(o); t.querySelector('.p').textContent = `${hours(o.playMin)} on Steam · ${idleText(o.last)}`; return t; });
+  return [...a, ...b];
 }
 function shelfItems(k) {
   if (k === 'recent') return played().slice(0, 16);
@@ -65,13 +83,13 @@ async function renderFriends() {
   const label = (x) => x.state === 'ingame' ? esc(x.game || 'In a game') + (x.detail ? ' · ' + esc(x.detail) : '')
     : x.state === 'offline' ? (x.lastOff ? 'Last online ' + ago(x.lastOff) : 'Offline') : x.state[0].toUpperCase() + x.state.slice(1);
   // redraw only when something changed, and animate only the first time
-  const key = JSON.stringify(f.slice(0, 40).map((x) => [x.id, x.state, x.game, x.detail, x.avatar]));
+  const key = JSON.stringify(f.slice(0, 40).map((x) => [x.id, x.state, x.game, x.detail, x.avatar, x.cover]));
   if (el.dataset.key === key && el.childElementCount) return;
   el.classList.toggle('first', !el.dataset.key);
   el.dataset.key = key;
   el.innerHTML = f.length ? f.slice(0, 40).map((x, i) => `<div class="fr ${x.state}" style="--i:${Math.min(i, 12)}">
       <span class="av" style="${x.avatar ? `background-image:${bgu(x.avatar)}` : ''}"><i></i></span>
-      <span class="fr-tx"><b>${esc(x.name)}</b><small>${label(x)}</small></span>
+      <span class="fr-tx"><b>${esc(x.name)}</b><small>${label(x)}</small></span>${x.state === 'ingame' && x.cover ? `<span class="fr-game" style="background-image:${bgu(x.cover)}" title="${esc(x.game || '')}"></span>` : ''}
     </div>`).join('') : '<div class="fr-empty"><p>No Steam friends yet.</p></div>';
 }
 
@@ -108,10 +126,17 @@ renderers.home = (force) => {
   const rest = [...pool.slice(1), ...ordered('added').filter((g) => !pool.includes(g))].slice(0, 3);
   const bn = $('#hmBanner');
   bn.style.background = artBg(heroOf(top), top);
-  bn.innerHTML = `<div class="b-logo">${logoHtml(top)}</div>
+  state.homeTop = top;
+  $('#hmBannerIn').innerHTML = `<div class="b-logo">${logoHtml(top)}</div>
     <div class="b-meta">${top.open ? `<span class="live" data-live="${top.id}">● ${esc(metaLine(top))}</span>` : `<span>${lastPlayed(top) ? 'Last played ' + ago(lastPlayed(top)) : 'Ready to play'}</span>${within(top, weekStart(), Infinity) >= 6e4 ? `<span>${fmt(within(top, weekStart(), Infinity))} this week</span>` : ''}<span>${fmt(total(top))} total</span><span>${top.sessions.length} sessions</span>`}</div>
-    <div class="actions"><button class="btn btn-solid ${top.open ? 'running' : ''}" id="hmPlay"><span>${top.open ? 'Running' : recent.length ? 'Continue' : 'Play'}</span><span class="ic">${ICON.play}</span></button></div>`;
-  bn.onclick = (e) => { if (e.target.closest('#hmPlay')) return launch(top); select(top.id); };
+    <div class="actions"><button class="btn btn-solid ${top.open ? 'running' : ''}" id="hmPlay"><span>${top.open ? 'Running' : recent.length ? 'Continue' : 'Play'}</span><span class="ic">${ICON.play}</span></button>
+      <button class="btn btn-ghost" id="hmVid"><span>Video</span><span class="ic">${ICON.play}</span></button><button class="btn btn-ghost icon-only" id="hmMute" hidden></button></div>`;
+  bn.onclick = (e) => {
+    if (e.target.closest('#hmVid')) return renderers.homeVideo && renderers.homeVideo();
+    if (e.target.closest('#hmMute')) return renderers.videoMute && renderers.videoMute();
+    if (e.target.closest('#hmPlay')) return launch(top);
+    select(top.id);
+  };
   $('#hmSide').innerHTML = rest.map((g) => `<div class="side-item" data-id="${g.id}" tabindex="0" role="button">
       <i class="th" style="background:${artBg(thumbOf(g), g)}">${thumbOf(g) || !g.art.icon ? '' : `<img class="ph-icon only" src="${esc(g.art.icon)}" alt="">`}</i>
       <div class="tx"><div class="n">${g.art.icon ? `<img src="${esc(g.art.icon)}" alt="">` : ''}${esc(g.name)}</div><div class="p" data-live="${g.id}">${esc(metaLine(g))}</div></div>
@@ -124,7 +149,9 @@ renderers.home = (force) => {
   $('#shelfTabs').innerHTML = tabs.map(([k, l]) => `<button class="chip ${k === state.shelf ? 'on' : ''}" data-k="${esc(k)}">${k === 'fav' ? ICON.bookmark + ' ' : ''}${esc(l)}</button>`).join('');
   $('#shelfTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => { state.shelf = b.dataset.k; renderers.home(true); }; });
   const row = $('#shelfRow'); row.innerHTML = '';
-  if (state.shelf === 'stores') {
+  if (state.shelf === 'forgot') {
+    forgotten().forEach((t) => row.appendChild(t));
+  } else if (state.shelf === 'stores') {
     state.owned.games.filter((x) => !x.gameId && (x.header || x.cover)).sort((x, y) => (y.last - x.last) || (y.playMin - x.playMin)).slice(0, 16).forEach((o) => row.appendChild(storeTile(o)));
   } else {
     const items = shelfItems(state.shelf);

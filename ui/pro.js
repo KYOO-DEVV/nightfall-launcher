@@ -15,6 +15,12 @@ document.addEventListener('contextmenu', (e) => { if (!lib.debug && !e.target.cl
 
 /* ---------------- changelog ---------------- */
 const CHANGELOG = [
+  { v: '2.7.0', date: 'November 2026', title: 'A livelier Home', items: [
+    'The Continue card on Home can play the trailer of your last game.',
+    "A Rediscover shelf: games you liked and haven't played in two months, installed or waiting in your stores.",
+    "Friends in a game show that game's picture.",
+    "Store pages for games you haven't installed now have the trailer, your achievements, your old screenshots and the space the game needs.",
+  ] },
   { v: '2.6.1', date: 'November 2026', items: ["The library is now a clean grid of covers: the game's name sits on its art, no store tags or buttons. Play and Install wait on the game's page.", 'Downloads show their progress right on the cover.', 'A Video button on game pages: the background becomes the game\'s trailer, with a sound button.', 'Pronouns on your profile, and your showcase can hold any game you own, even if it isn\'t installed.', 'Smoother game pages: the background fades into the page and switching games no longer flashes lines or numbers.'] },
   { v: '2.6.0', date: 'November 2026', title: 'Your games, your way', items: [
     'Each game page takes the colour of its artwork.',

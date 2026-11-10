@@ -21,6 +21,7 @@ renderers.store = async (force) => {
   $('#sgFacts').innerHTML = Array.from({ length: 6 }, () => '<div class="skel-fact"><i></i><i></i></div>').join('');
   $('#sgShots').innerHTML = Array.from({ length: 4 }, () => '<span class="skel-shot"></span>').join('');
   $('#sgNewsBtn').hidden = true;
+  $('#sgAchPanel').hidden = true; $('#sgSize').hidden = true;
   const [info, feed] = await Promise.all([
     nf.storeInfo(o.store, o.id, o.appid).catch(() => ({})),
     loadNews({ name: o.name, appid: o.appid }, 's:' + o.id),
@@ -38,6 +39,7 @@ renderers.store = async (force) => {
   $('#sgShots').innerHTML = shots.length ? shots.slice(0, 6).map((u) => `<button style="background-image:${bgu(u)}" data-u="${esc(u)}" aria-label="Screenshot"></button>`).join('') : '<div class="msg">No screenshots available.</div>';
   $('#sgShots').querySelectorAll('[data-u]').forEach((b) => { b.onclick = () => showShot(b.dataset.u); });
   $('#sgDetail').dataset.n = 2;
+  if (renderers.storeExtras) renderers.storeExtras(o, info || {});
   setNewsButton($('#sgNewsBtn'), $('#sgNewsBadge'), feed, o.name);
 };
 function showShot(u) {

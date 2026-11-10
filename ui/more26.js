@@ -28,6 +28,13 @@ async function loadShots(g) {
   shotCache[g.id] = { t: now(), v }; return v;
 }
 const dateTxt = (t) => new Date(t).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
+/* achievement progress and list, shared by game pages and store pages */
+function achHtml(ach) {
+  return `<div class="ach-top"><b>${ach.unlocked}</b><span>of ${ach.total} unlocked</span><div class="bar"><i style="width:${(ach.unlocked / ach.total) * 100}%"></i></div></div>
+    <ol>${ach.list.map((a) => `<li class="${a.on ? 'on' : ''}"><span class="a-ic" style="${a.icon ? `background-image:${bgu(a.icon)}` : ''}"></span>
+      <span class="a-tx"><b>${a.hidden && !a.on ? 'Hidden achievement' : esc(a.name)}</b><small>${a.hidden && !a.on ? 'Keep playing to find out' : esc(a.desc || '')}</small></span>
+      <span class="a-at">${a.on ? (a.at ? dateTxt(a.at) : 'Unlocked') : ''}</span></li>`).join('')}</ol>`;
+}
 renderers.gameExtras = async (g) => {
   const [ach, shots] = await Promise.all([loadAch(g), loadShots(g)]);
   if ((featured() || {}).id !== g.id || state.view !== 'game') return;
@@ -45,10 +52,7 @@ renderers.gameExtras = async (g) => {
     const key = g.appid + ':' + ach.unlocked;
     if ($('#dAch').dataset.key !== key) {
       $('#dAch').dataset.key = key;
-      $('#dAch').innerHTML = `<div class="ach-top"><b>${ach.unlocked}</b><span>of ${ach.total} unlocked</span><div class="bar"><i style="width:${(ach.unlocked / ach.total) * 100}%"></i></div></div>
-        <ol>${ach.list.map((a) => `<li class="${a.on ? 'on' : ''}"><span class="a-ic" style="${a.icon ? `background-image:${bgu(a.icon)}` : ''}"></span>
-          <span class="a-tx"><b>${a.hidden && !a.on ? 'Hidden achievement' : esc(a.name)}</b><small>${a.hidden && !a.on ? 'Keep playing to find out' : esc(a.desc || '')}</small></span>
-          <span class="a-at">${a.on ? (a.at ? dateTxt(a.at) : 'Unlocked') : ''}</span></li>`).join('')}</ol>`;
+      $('#dAch').innerHTML = achHtml(ach);
     }
   }
   if (cur === 'shots' && shots.length) {

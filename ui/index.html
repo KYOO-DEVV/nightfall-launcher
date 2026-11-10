@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="pro.css">
 <link rel="stylesheet" href="more26.css">
 <link rel="stylesheet" href="video.css">
+<link rel="stylesheet" href="more27.css">
 </head>
 <body>
 <div class="splash" id="splash" aria-hidden="true"><div class="sp-in"><img src="icon.png" alt=""><b>Nightfall</b><i class="sp-bar"><i></i></i></div></div>
@@ -66,7 +67,7 @@
       </div>
 
       <div class="h-top" id="hmTop">
-        <div class="banner" id="hmBanner"></div>
+        <div class="banner" id="hmBanner"><div class="b-video" id="hmVideoSlot"></div><div class="b-in" id="hmBannerIn"></div></div>
         <div class="side-list" id="hmSide"></div>
         <div class="panel friends" id="hmFriends">
           <div class="row-head"><h2>Friends</h2><span class="muted" id="frSub">Steam</span></div>
@@ -152,8 +153,11 @@
           <span class="chip"><span id="sgChip"></span></span>
           <div class="logo" id="sgLogo"></div>
           <p class="desc" id="sgDesc"></p>
+          <p class="sg-size" id="sgSize" hidden></p>
           <div class="sg-progress" id="sgProg" hidden><div class="bar"><i id="sgBar"></i></div><div class="sg-prog-tx"><b id="sgPct"></b><span id="sgRate"></span></div></div>
           <div class="actions">
+            <button class="btn btn-ghost icon-only" id="sgVidMute" hidden aria-label="Turn the sound on"></button>
+            <button class="btn btn-ghost" id="sgVidBtn"><span>Video</span><span class="ic" data-icon="play"></span></button>
             <button class="btn btn-ghost news-btn" id="sgNewsBtn" hidden><span>News</span><i class="nbadge" id="sgNewsBadge" hidden></i><span class="ic" data-icon="news"></span></button>
             <button class="btn btn-ghost" id="sgPage"><span>Store page</span><span class="ic" data-icon="ext"></span></button>
             <button class="btn btn-solid" id="sgInstall"><span id="sgInstallTxt">Install</span><span class="ic" data-icon="download"></span></button>
@@ -168,6 +172,10 @@
         <div class="panel">
           <div class="row-head"><h2>Screenshots</h2></div>
           <div class="sg-shots" id="sgShots"></div>
+        </div>
+        <div class="panel scroll-panel" id="sgAchPanel" hidden>
+          <div class="row-head"><h2>Achievements</h2><span class="muted" id="sgAchSub"></span></div>
+          <div class="d-ach" id="sgAch"></div>
         </div>
       </div>
     </section>
@@ -512,6 +520,7 @@
 <script src="pro.js"></script>
 <script src="more26.js"></script>
 <script src="video.js"></script>
+<script src="more27.js"></script>
 <script src="i18n.js"></script>
 </body>
 </html>

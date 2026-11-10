@@ -358,7 +358,7 @@ fn os_notify(core: C<'_>, title: String, body: String) {
 /// YouTube videos for a game's trailer, best match first (the page shows them with youtube-nocookie)
 #[tauri::command]
 async fn trailer_find(name: String) -> R<Vec<String>> {
-    let q = format!("{} official trailer", name.chars().take(80).collect::<String>());
+    let q = format!("{} game official trailer", name.chars().take(80).collect::<String>());
     let url = format!("https://www.youtube.com/results?search_query={}", urlencoding::encode(&q));
     let html = HTTP.get(&url).header("Accept-Language", "en").send().await.map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?;
     let mut ids: Vec<String> = vec![];
@@ -380,8 +380,26 @@ fn achievements_get(core: C<'_>, appid: i64) -> Option<Value> {
 #[tauri::command]
 fn game_screenshots(core: C<'_>, id: String) -> Value {
     let Some(g) = core.db.lock().unwrap().by_id(&id).cloned() else { return json!([]) };
+    shots_json(core.inner(), &g)
+}
+/// the same for a game you own but haven't installed (old Steam screenshots stay on the PC)
+#[tauri::command]
+fn owned_screenshots(core: C<'_>, appid: Option<i64>, name: String) -> Value {
+    shots_json(core.inner(), &Game { appid, name: name.chars().take(120).collect(), ..Default::default() })
+}
+/// free space on the drive a store installs to
+#[tauri::command]
+fn drive_free(store: String) -> Option<Value> {
+    let root = if store == "steam" { scan::steam_root() } else { program_files() };
+    let p = root.to_string_lossy().to_lowercase();
+    let disks = sysinfo::Disks::new_with_refreshed_list();
+    disks.iter().filter(|d| p.starts_with(&d.mount_point().to_string_lossy().to_lowercase()))
+        .max_by_key(|d| d.mount_point().as_os_str().len())
+        .map(|d| json!({ "free": d.available_space(), "drive": d.mount_point().to_string_lossy().trim_end_matches('\\') }))
+}
+fn shots_json(core: &Arc<Core>, g: &Game) -> Value {
     let videos = core.app.path().video_dir().unwrap_or_else(|_| home().join("Videos"));
-    let (dirs, files) = play::screenshots(&g, &scan::steam_root(), &videos);
+    let (dirs, files) = play::screenshots(g, &scan::steam_root(), &videos);
     for d in &dirs { let _ = core.app.asset_protocol_scope().allow_directory(d, false); }
     json!(files.into_iter().filter_map(|(p, at)| asset_url(&p.to_string_lossy(), 0).map(|u| json!({ "url": u, "at": at }))).collect::<Vec<_>>())
 }
@@ -1160,7 +1178,7 @@ fn main() {
             col_create, col_rename, col_delete, col_toggle, owned_get, owned_open, friends_get, save_card, update_check, update_install, open_link, image_data,
             news_get, downloads_get, store_info_get, profile_set, profile_pick, profile_clear,
             log_write, backups_list, backup_create, backup_restore, report_problem, open_issue, open_logs, app_ready,
-            pins_order, achievements_get, game_screenshots, os_notify, widget_close, trailer_find
+            pins_order, achievements_get, game_screenshots, os_notify, widget_close, trailer_find, owned_screenshots, drive_free
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nightfall");

@@ -1,0 +1,33 @@
+/* ===== 2.7: livelier Home, richer store pages ===== */
+
+/* ---------- Continue card: trailer behind the text ---------- */
+.banner .b-video{position:absolute;inset:0;z-index:0;border-radius:inherit;overflow:hidden}
+.banner::before{z-index:1}
+.banner .b-in{display:contents}
+.banner .b-in > *{position:relative;z-index:2}
+.banner .actions{flex-wrap:nowrap}
+.banner #hmVid{background:rgba(11,11,13,.5);backdrop-filter:blur(10px)}
+.banner #hmMute{background:rgba(11,11,13,.5);backdrop-filter:blur(10px)}
+.banner #hmMute svg{width:15px;height:15px}
+.banner #hmVid.busy .ic{animation:spin .9s linear infinite}
+.banner.playing::before{background:linear-gradient(90deg,rgba(8,8,10,.7),rgba(8,8,10,.1) 55%,transparent),linear-gradient(0deg,rgba(8,8,10,.6),transparent 45%)}
+
+/* ---------- friends: the game they're in ---------- */
+.fr .fr-tx{flex:1}
+.fr-game{width:58px;height:27px;flex:none;border-radius:6px;background:#1b1b20 center/cover;outline:1px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.35)}
+
+/* ---------- store page ---------- */
+.sg-size{margin:0;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;font-size:11px;color:#c9c9d0}
+.sg-size b{font-weight:800;color:#fff}
+.sg-size span{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.07);font-weight:700;font-variant-numeric:tabular-nums}
+.sg-size span.low{background:rgba(248,113,113,.14);color:#ffb4b4}
+#sgDesc{transition:opacity .5s}
+#sgDesc.faded{opacity:0}
+#sgVidBtn.on{background:rgba(255,255,255,.12)}
+#sgVidBtn.busy .ic{animation:spin .9s linear infinite}
+#sgVidMute svg{width:15px;height:15px}
+#storeView .hero-copy{width:min(720px,64%)}
+#storeView .hero-copy .actions{flex-wrap:nowrap;justify-content:flex-end}
+.sg-shots button.mine{position:relative}
+.sg-shots button.mine i{position:absolute;left:6px;top:6px;padding:2px 6px;border-radius:5px;background:rgba(8,8,10,.78);font:800 8.5px var(--sans);font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:#fff}
+#sgAchPanel .d-ach{margin-top:6px}

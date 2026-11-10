@@ -193,6 +193,11 @@ const D = {
   "A Video button on game pages: the background becomes the game's trailer, with a sound button.": "Un bouton Vidéo sur les pages de jeu : le fond devient la bande-annonce du jeu, avec un bouton pour le son.",
   "Pronouns on your profile, and your showcase can hold any game you own, even if it isn't installed.": "Des pronoms sur ton profil, et ta vitrine peut contenir n'importe quel jeu que tu possèdes, même non installé.",
   'Smoother game pages: the background fades into the page and switching games no longer flashes lines or numbers.': "Pages de jeu plus propres : le fond se fond dans la page et changer de jeu ne fait plus apparaître de lignes ni de chiffres.",
+  'Rediscover': 'À redécouvrir', 'Yours': 'À toi', 'Not played for over a year': "Pas joué depuis plus d'un an", 'A livelier Home': 'Un accueil plus vivant',
+  'The Continue card on Home can play the trailer of your last game.': 'La carte Continuer de l\'accueil peut lire la bande-annonce de ton dernier jeu.',
+  "A Rediscover shelf: games you liked and haven't played in two months, installed or waiting in your stores.": "Une étagère À redécouvrir : les jeux que tu aimais et auxquels tu n'as pas joué depuis deux mois, installés ou dans tes stores.",
+  "Friends in a game show that game's picture.": "Les amis en jeu affichent l'image de leur jeu.",
+  "Store pages for games you haven't installed now have the trailer, your achievements, your old screenshots and the space the game needs.": "Les pages des jeux non installés ont maintenant la bande-annonce, tes succès, tes anciennes captures et l'espace nécessaire.",
   'Video': 'Vidéo', 'Stop video': 'Arrêter la vidéo', 'Turn the sound on': 'Activer le son', 'Mute': 'Couper le son', 'Trailer': 'Bande-annonce',
   "Couldn't find a trailer for this game": 'Aucune bande-annonce trouvée pour ce jeu', "This game's trailer can't be played here": 'La bande-annonce de ce jeu ne peut pas être lue ici',
   'Pronouns': 'Pronoms', 'Pronouns saved': 'Pronoms enregistrés', "This game isn't in your store libraries any more": "Ce jeu n'est plus dans tes stores",
@@ -245,7 +250,10 @@ const R = [
   [/^(\S+ \S?B) of (\S+ \S?B)$/, (_, a, b) => `${a} sur ${b}`], [/^(\S+ \S?B) free$/, (_, a) => `${a} libres`], [/^done around (.+)$/, (_, t) => `fini vers ${t}`],
   [/^Waiting in (.+)$/, (_, s) => `En attente dans ${s}`], [/^(\d+) new this week$/, (_, n) => `${n} nouvelles cette semaine`],
   [/^(.+) is opening to install (.+)\. Progress shows here once it starts\.$/, (_, s, g) => `${s} s'ouvre pour installer ${g}. La progression s'affichera ici.`],
-  [/^Paused in (.+)$/, (_, s) => `En pause dans ${s}`], [/^(\d{4}) in review$/, (_, y) => `Bilan ${y}`],
+  [/^Paused in (.+)$/, (_, s) => `En pause dans ${s}`],
+  [/^in your library$/, () => 'dans ta bibliothèque'], [/^not installed$/, () => 'non installé'], [/^about (\d.*)$/, (_, s) => `environ ${s}`], [/^(\S+) on Steam$/, (_, h) => `${h} sur Steam`],
+  [/^Not played for (\d+) months$/, (_, n) => `Pas joué depuis ${n} mois`], [/^Not played for (\d+) years$/, (_, n) => `Pas joué depuis ${n} ans`],
+  [/^Needs about (.+)$/, (_, s) => `Environ ${s} nécessaires`], [/^(\S+) GB free on (.+)$/, (_, a, d) => `${a} GB libres sur ${d}`], [/^(\d{4}) in review$/, (_, y) => `Bilan ${y}`],
 ];
 const SKIP = new Set(['SCRIPT', 'STYLE', 'KBD', 'CODE']);
 // names of people, games and news are never translated (a friend called "Blue" stays Blue)
