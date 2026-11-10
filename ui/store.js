@@ -18,8 +18,8 @@ renderers.store = async (force) => {
   const st = (v, k) => `<div class="hstat"><div class="v"><span>${esc(v)}</span></div><div class="k">${esc(k)}</div></div>`;
   $('#sgStats').innerHTML = (o.playMin ? st(hours(o.playMin), 'On Steam') : '') + (o.last ? st(ago(o.last), 'Last played') : '');
   $('#sgPage').hidden = !o.page;
-  $('#sgFacts').innerHTML = '<div class="msg">Loading…</div>';
-  $('#sgShots').innerHTML = '';
+  $('#sgFacts').innerHTML = Array.from({ length: 6 }, () => '<div class="skel-fact"><i></i><i></i></div>').join('');
+  $('#sgShots').innerHTML = Array.from({ length: 4 }, () => '<span class="skel-shot"></span>').join('');
   $('#sgNewsBtn').hidden = true;
   const [info, feed] = await Promise.all([
     nf.storeInfo(o.store, o.id, o.appid).catch(() => ({})),
@@ -78,7 +78,7 @@ function etaTxt(d) {
 function finishAt(d) {
   if (!d.total || !d.rate || d.rate < 1) return '';
   const t = new Date(now() + ((d.total - d.done) / d.rate) * 1000);
-  return 'done around ' + t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return 'done around ' + t.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 }
 const pctOf = (d) => (d.total ? Math.min(100, (d.done / d.total) * 100) : 0);
 const STATE_TXT = { downloading: 'Downloading', installing: 'Installing', paused: 'Paused', queued: 'Queued' };

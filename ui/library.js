@@ -10,6 +10,7 @@ window.addEventListener('resize', movePill);
 function mineCard(g) {
   const el = document.createElement('div');
   el.className = 'av-card installed';
+  el.tabIndex = 0;
   el.innerHTML = `<div class="av-img">${tallArt(g)}
       <span class="store mine">${esc(STORE_LABEL[g.source] || 'PC')}</span>${g.fav ? `<span class="fav-dot">${ICON.bookmark}</span>` : ''}${g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
     <div class="av-meta"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${total(g) ? fmt(total(g)) + ' played' : 'Not played yet'}${lastPlayed(g) ? ' · ' + ago(lastPlayed(g)) : ''}</small></div>
@@ -24,6 +25,7 @@ function ownedCard(o) {
   const g = o.gameId && gameById(o.gameId);
   const el = document.createElement('div');
   el.className = 'av-card' + (g ? ' installed' : '');
+  el.tabIndex = 0;
   el.dataset.key = dlKey(o);
   el.innerHTML = `<div class="av-img">${o.cover ? `<img class="cv-img" src="${esc(epicSmall(o.cover))}" alt="" loading="lazy" decoding="async">` : `<span class="nm">${esc(o.name)}</span>`}
       <span class="store ${o.store}">${esc(STORE_LABEL[o.store] || o.store)}</span>${g && g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
@@ -38,6 +40,7 @@ function ownedCard(o) {
   paintCardProgress(el);
   return el;
 }
+const skelCards = (n) => Array.from({ length: n }, (_, i) => `<div class="av-card skel" style="--i:${i}"><div class="av-img"></div><div class="av-meta"><i></i><i></i></div></div>`).join('');
 const dlKey = (o) => (o.store === 'steam' ? 'steam:' + o.appid : o.store === 'epic' ? 'epic:' + (o.ns || '') : o.id);
 /* live install progress on store cards */
 function paintCardProgress(el) {
@@ -108,8 +111,17 @@ renderers.all = async (force) => {
   }
   // your stores
   $('#avSort').hidden = true; $('#avRefresh').hidden = false;
-  if (!state.owned || force === 'refresh') { $('#avSub').textContent = 'Reading your store libraries…'; try { state.owned = await nf.owned(force === 'refresh'); } catch { state.owned = { accounts: [], games: [] }; } }
+  if (!state.owned || force === 'refresh') {
+    $('#avSub').textContent = 'Reading your store libraries…';
+    if (!grid.querySelector('.av-card')) { grid.innerHTML = skelCards(12); avKey = ''; }
+    try { state.owned = await nf.owned(force === 'refresh'); } catch (e) { nf.log('warn', 'owned: ' + e); state.owned = { accounts: [], games: [], failed: true }; }
+  }
   const o = state.owned, games = o.games || [];
+  if (o.failed) {
+    $('#avSub').textContent = '';
+    grid.innerHTML = `<div class="state-box">${ICON.refresh}<b>Couldn't read your store libraries</b><p>Your stores' apps may be busy updating. Your games on this PC are not affected.</p><button class="btn btn-solid sm" id="avRetry"><span>Try again</span></button></div>`;
+    avKey = ''; $('#avRetry').onclick = () => renderers.all('refresh'); return;
+  }
   const by = (s) => games.filter((x) => x.store === s).length;
   $('#avEyebrow').textContent = (o.accounts || []).map((a) => a.store === 'steam' ? 'Steam · ' + a.name : a.name).join('  ·  ') || 'Your stores';
   $('#avSub').textContent = games.length ? `${games.length} games you own · ${games.filter((x) => x.gameId).length} installed here` : 'No store libraries found on this PC. Sign in to Steam, Epic, GOG Galaxy, Amazon Games or itch once, then refresh.';

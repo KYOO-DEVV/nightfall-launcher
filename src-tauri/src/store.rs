@@ -100,11 +100,19 @@ pub struct Settings {
     pub show_filters: bool,
     /// icon on the Game settings buttons: cog, sliders, dots, pencil or none
     pub settings_icon: String,
+    /// the first-run welcome has been completed
+    pub onboarded: bool,
+    /// the version whose "What's new" you've seen
+    pub last_seen_version: String,
+    /// "system" (follow Windows), "on" or "off"
+    pub reduce_motion: String,
+    /// a soft sound when a game launches
+    pub sounds: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Settings { close_to_tray: true, discord_enabled: false, discord_client_id: String::new(), discord_idle: false, auto_add_installed: true, steam_api_key: String::new(),
-            show_filters: false, settings_icon: "cog".into() }
+            show_filters: false, settings_icon: "cog".into(), onboarded: false, last_seen_version: String::new(), reduce_motion: "system".into(), sounds: false }
     }
 }
 

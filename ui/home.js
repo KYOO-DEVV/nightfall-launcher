@@ -54,8 +54,9 @@ async function loadFriends(force) {
   friendsAt = now(); return friendsData;
 }
 async function renderFriends() {
-  const d = await loadFriends(false);
   const el = $('#frList');
+  if (!el.childElementCount) el.innerHTML = Array.from({ length: 5 }, () => '<div class="fr skel"><span class="av"></span><span class="fr-tx"><i></i><i></i></span></div>').join('');
+  const d = await loadFriends(false);
   const msg = { nosteam: "Sign in to the Steam app on this PC and your friends show up here.", nofriends: 'No friends in your Steam app yet.' };
   if (d.error) { $('#frSub').textContent = 'Steam'; el.innerHTML = `<div class="fr-empty"><p>${esc(msg[d.error] || d.error)}</p></div>`; return; }
   const f = (d.friends || []).filter((x) => x.state !== 'unknown');
@@ -78,7 +79,7 @@ async function renderFriends() {
 let homeKey = '';
 renderers.home = (force) => {
   const d = new Date(), h = d.getHours();
-  $('#hmDate').textContent = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#hmDate').textContent = d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
   $('#hmGreet').textContent = h < 5 ? 'Late night session' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   $('#hmReviewTxt').textContent = d.getFullYear() + ' in review';
   const gs = lib.games, empty = !gs.length;

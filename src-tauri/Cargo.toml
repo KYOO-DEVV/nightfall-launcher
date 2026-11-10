@@ -1,6 +1,6 @@
 [package]
 name = "nightfall"
-version = "2.4.1"
+version = "2.5.0"
 description = "Nightfall Launcher"
 edition = "2021"
 

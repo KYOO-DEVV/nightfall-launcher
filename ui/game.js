@@ -75,7 +75,7 @@ async function loadNews(q, key) {
   newsCache[key] = { t: now(), f };
   return f;
 }
-const shortDate = (t) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
+const shortDate = (t) => (t ? new Date(t).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) : '');
 function renderNewsInto(el, f, rich) {
   const items = (f && f.items) || [];
   const b = f && f.banner && f.banner.image ? f.banner : null;
@@ -100,8 +100,8 @@ async function loadDetail(g, force) {
   detailCache[g.id] = { t: now(), d };
   return d;
 }
-const dayLabel = (t) => new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-const hm = (t) => new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayLabel = (t) => new Date(t).toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
+const hm = (t) => new Date(t).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 let detailFor = null, dTab = 'sessions';
 $('#dTabs').querySelectorAll('button').forEach((b) => { b.onclick = () => { dTab = b.dataset.t; const g = featured(); if (g) renderDetail(g); }; });
 function layoutDetail() {

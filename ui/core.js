@@ -6,6 +6,8 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const bgu = (u) => `url('${String(u).replace(/'/g, '%27')}')`;
 const DAY = 864e5;
+// one language across the app: English words with day-month dates and a 24-hour clock
+const LOCALE = 'en-GB';
 const now = () => Date.now();
 function weekStart(t = now()) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; }
 function spans(g) { const s = g.sessions.map((x) => [x.s, x.e]); if (g.open) s.push([g.open.s, now()]); return s; }
@@ -28,7 +30,7 @@ function ago(t) {
   if (m < 60) return Math.floor(m) + ' minutes ago';
   if (m < 1440) return Math.floor(m / 60) + (m < 120 ? ' hour ago' : ' hours ago');
   const d = Math.floor(m / 1440);
-  return d === 1 ? 'yesterday' : d < 30 ? d + ' days ago' : new Date(t).toLocaleDateString();
+  return d === 1 ? 'yesterday' : d < 30 ? d + ' days ago' : new Date(t).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function hue(name) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 function fallbackBg(g) {
@@ -257,7 +259,14 @@ function renderResults() {
 }
 $('#searchBtn').onclick = (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; if (!pop.hidden) { q.value = ''; renderResults(); q.focus(); } };
 q.oninput = renderResults;
-q.onkeydown = (e) => { if (e.key === 'Escape') pop.hidden = true; if (e.key === 'Enter') $('#results button')?.click(); };
+function openSearch() { pop.hidden = false; q.value = ''; renderResults(); q.focus(); }
+q.onkeydown = (e) => { if (e.key === 'Escape') pop.hidden = true; if (e.key === 'Enter') $('#results button')?.click(); if (e.key === 'ArrowDown') { e.preventDefault(); $('#results button')?.focus(); } };
+$('#results').addEventListener('keydown', (e) => {
+  const bs = [...$('#results').querySelectorAll('button')], i = bs.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' && i < bs.length - 1) { e.preventDefault(); bs[i + 1].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); (i > 0 ? bs[i - 1] : q).focus(); }
+  if (e.key === 'Escape') pop.hidden = true;
+});
 document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
 
 /* ---------------- modal helpers ---------------- */
@@ -436,4 +445,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   setInterval(refreshShots, 60000);
   setInterval(() => { if (lib.games.some((g) => g.open) && renderers.tick) renderers.tick(); }, 1000);
   setInterval(() => renderView(false), 30000);
+  if (window.afterBoot) afterBoot();
 });

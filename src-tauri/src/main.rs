@@ -6,6 +6,7 @@ mod extra;
 mod libraries;
 mod matches;
 mod presence;
+mod pro;
 mod scan;
 mod social;
 mod store;
@@ -50,6 +51,7 @@ pub struct Core {
     sem: tokio::sync::Semaphore,
     auto_at: Mutex<i64>,
     profile_dir: PathBuf,
+    dir: PathBuf,
 }
 type C<'a> = State<'a, Arc<Core>>;
 
@@ -79,6 +81,7 @@ impl Core {
             "presence": self.presence.status(),
             "profile": public_profile(&db.profile),
             "portable": false,
+            "debug": cfg!(debug_assertions),
         })
     }
 }
@@ -384,7 +387,7 @@ async fn check_update(core: Arc<Core>) -> R<()> {
     match up.check().await {
         Ok(Some(u)) => { set_update(&core, json!({ "state": "available", "version": u.version })); *core.pending.lock().unwrap() = Some(u); }
         Ok(None) => set_update(&core, json!({ "state": "latest", "at": now_ms() })),
-        Err(e) => { set_update(&core, json!({ "state": "error", "message": e.to_string() })); return Err(e.to_string()) }
+        Err(e) => { pro::log("warn", &format!("update check failed: {e}")); set_update(&core, json!({ "state": "error", "message": e.to_string() })); return Err(e.to_string()) }
     }
     Ok(())
 }
@@ -420,7 +423,12 @@ fn lib_connect(core: C<'_>, indexes: Vec<usize>) -> Vec<String> {
 
 #[tauri::command]
 fn game_launch(core: C<'_>, id: String) -> Option<String> {
-    let g = { core.db.lock().unwrap().by_id(&id).cloned() }?;
+    let err = launch_game(core.inner(), &id);
+    if let Some(e) = &err { pro::log("warn", &format!("launch failed: {e}")) }
+    err
+}
+fn launch_game(core: &Arc<Core>, id: &str) -> Option<String> {
+    let g = { core.db.lock().unwrap().by_id(id).cloned() }?;
     if let Some(l) = &g.launch {
         if let Some(u) = &l.uri { return tauri_plugin_opener::open_url(u, None::<&str>).err().map(|e| e.to_string()) }
         if let Some(c) = l.cmd.as_ref().filter(|c| Path::new(c).exists()) {
@@ -552,6 +560,10 @@ fn app_set(core: C<'_>, key: String, val: Value) {
             "autoAddInstalled" => s.auto_add_installed = val.as_bool().unwrap_or(true),
             "discordClientId" => s.discord_client_id = val.as_str().unwrap_or("").chars().filter(|c| c.is_ascii_digit()).take(22).collect(),
             "showFilters" => s.show_filters = val.as_bool().unwrap_or(false),
+            "onboarded" => s.onboarded = val.as_bool().unwrap_or(true),
+            "lastSeenVersion" => s.last_seen_version = val.as_str().unwrap_or("").chars().take(20).collect(),
+            "reduceMotion" => { let v = val.as_str().unwrap_or("system"); if ["system", "on", "off"].contains(&v) { s.reduce_motion = v.into() } }
+            "sounds" => s.sounds = val.as_bool().unwrap_or(false),
             "settingsIcon" => { let v = val.as_str().unwrap_or("cog"); if ["cog", "sliders", "dots", "pencil", "none"].contains(&v) { s.settings_icon = v.into() } }
             "steamApiKey" => { s.steam_api_key = val.as_str().unwrap_or("").chars().filter(|c| c.is_ascii_alphanumeric()).take(40).collect(); *core.friends.lock().unwrap() = None; }
             _ => {}
@@ -787,6 +799,85 @@ async fn update_install(core: C<'_>) -> R<()> {
     Ok(())
 }
 
+/* ---------------- reliability: logs, backups, reports ---------------- */
+/// errors from the interface go to the same log file
+#[tauri::command]
+fn log_write(level: String, msg: String) {
+    let level = if ["info", "warn", "error"].contains(&level.as_str()) { level } else { "info".into() };
+    pro::log(&format!("ui-{level}"), &msg);
+}
+#[tauri::command]
+fn backups_list(core: C<'_>) -> Value {
+    json!(pro::list(&core.dir).into_iter().map(|(n, t, size)| json!({ "name": n, "at": t, "size": size })).collect::<Vec<_>>())
+}
+#[tauri::command]
+fn backup_create(core: C<'_>) -> Option<String> {
+    core.flush();
+    let r = pro::backup_now(&core.dir, &core.file);
+    if let Some(n) = &r { pro::log("info", &format!("backup saved by hand: {n}")) }
+    r
+}
+/// puts a backup back; what you have now is saved as a backup first, so a restore can always be undone
+#[tauri::command]
+fn backup_restore(core: C<'_>, name: String) -> R<()> {
+    let text = pro::read_backup(&core.dir, &name).ok_or("That backup no longer exists.")?;
+    let mut back: Db = serde_json::from_str(&text).map_err(|_| "That backup is damaged and can't be restored.".to_string())?;
+    core.flush();
+    pro::backup_now(&core.dir, &core.file);
+    {
+        let mut db = core.db.lock().unwrap();
+        back.settings.onboarded = true;
+        back.caches = std::mem::take(&mut db.caches);
+        *db = back;
+    }
+    pro::log("info", &format!("restored backup {name}"));
+    core.mark(); core.notify();
+    Ok(())
+}
+/// writes a problem report to Downloads and shows it in Explorer
+#[tauri::command]
+fn report_problem(core: C<'_>, text: String) -> R<String> {
+    let (games, stores) = {
+        let db = core.db.lock().unwrap();
+        let mut s: Vec<String> = db.games.iter().filter_map(|g| g.source.clone()).collect();
+        s.sort(); s.dedup();
+        (db.games.len(), s)
+    };
+    let body = pro::report(&core.app.package_info().version.to_string(), games, &stores, &text.chars().take(4000).collect::<String>());
+    let dl = core.app.path().download_dir().unwrap_or_else(|_| core.dir.clone());
+    let path = dl.join(format!("Nightfall-report-{}.txt", chrono::Local::now().format("%Y-%m-%d_%H%M")));
+    std::fs::write(&path, body).map_err(|e| e.to_string())?;
+    let _ = std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn();
+    pro::log("info", "problem report created");
+    Ok(path.file_name().unwrap_or_default().to_string_lossy().to_string())
+}
+/// a new GitHub issue with only the version filled in; you attach the report yourself
+#[tauri::command]
+fn open_issue(core: C<'_>) {
+    let v = core.app.package_info().version.to_string();
+    let body = format!("**What happened?**
+
+
+**What did you expect?**
+
+
+**Steps to reproduce**
+1. 
+
+---
+Nightfall {v}. Drag the report file from your Downloads folder here (Settings → Help → Create a report).");
+    let url = format!("https://github.com/KYOO-DEVV/nightfall-launcher/issues/new?title={}&body={}", urlencoding::encode("Problem: "), urlencoding::encode(&body));
+    let _ = tauri_plugin_opener::open_url(url, None::<&str>);
+}
+#[tauri::command]
+fn open_logs(core: C<'_>) {
+    let d = pro::log_dir().unwrap_or_else(|| core.dir.clone());
+    let _ = std::process::Command::new("explorer.exe").arg(d).spawn();
+}
+/// the interface has drawn its first frame
+#[tauri::command]
+fn app_ready() { pro::log("info", "interface ready"); }
+
 /* ================= start-up ================= */
 fn main() {
     let mut builder = tauri::Builder::default();
@@ -801,17 +892,33 @@ fn main() {
         .setup(|app| {
             let dir = std::env::var("NF_USERDATA").map(PathBuf::from).unwrap_or(app.path().app_data_dir()?);
             std::fs::create_dir_all(&dir)?;
+            pro::init_log(&dir);
+            pro::log("info", &format!("Nightfall {} starting", app.package_info().version));
             let file = dir.join("library.json");
             let art = dir.join("art");
-            let mut db: Db = std::fs::read_to_string(&file).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+            let mut db: Db = match std::fs::read_to_string(&file) {
+                Err(_) => Db::default(),
+                Ok(t) => match serde_json::from_str(&t) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        // a damaged library file is set aside (never overwritten) and the newest backup takes its place
+                        pro::log("error", &format!("library.json could not be read ({e}); restoring the newest backup"));
+                        let _ = std::fs::copy(&file, dir.join(format!("library.damaged-{}.json", now_ms())));
+                        pro::list(&dir).iter().find_map(|(n, _, _)| pro::read_backup(&dir, n).and_then(|t| serde_json::from_str(&t).ok())).unwrap_or_default()
+                    }
+                },
+            };
+            pro::daily_backup(&dir, &file);
             migrate(&mut db, &art);
+            // people who used Nightfall before the welcome existed skip it (they still get What's new)
+            if !db.settings.onboarded && !db.games.is_empty() { db.settings.onboarded = true }
             // close sessions left open by a crash / shutdown at their last confirmed moment
             for g in db.games.iter_mut() { if let Some(o) = g.open.take() { if o.last - o.s >= MIN_SESSION_MS { g.sessions.push(Session { s: o.s, e: o.last }) } } }
             let core = Arc::new(Core {
                 app: app.handle().clone(), db: Mutex::new(db), dirty: AtomicBool::new(true), file, art,
                 update: Mutex::new(json!({ "state": "idle" })), pending: Mutex::new(None), presence: presence::Presence::start(),
                 owned: Mutex::new(None), last_scan: Mutex::new(vec![]), test_until: Mutex::new(0), friends: Mutex::new(None),
-                sem: tokio::sync::Semaphore::new(3), auto_at: Mutex::new(now_ms() + 20_000), profile_dir: dir.join("profile"),
+                sem: tokio::sync::Semaphore::new(3), auto_at: Mutex::new(now_ms() + 20_000), profile_dir: dir.join("profile"), dir: dir.clone(),
             });
             // let the webview load this library's art wherever the data folder lives
             let _ = app.asset_protocol_scope().allow_directory(&core.art, true);
@@ -820,12 +927,20 @@ fn main() {
             let _ = app.asset_protocol_scope().allow_directory(scan::steam_root().join("config").join("avatarcache"), false);
             app.manage(core.clone());
             core.flush();
+            pro::daily_backup(&core.dir, &core.file);
             build_tray(app.handle(), core.clone())?;
             if !std::env::args().any(|a| a == "--hidden") { show_main(app.handle()) }
 
             // save loop
             let c = core.clone();
-            tauri::async_runtime::spawn(async move { loop { tokio::time::sleep(Duration::from_secs(2)).await; if c.dirty.load(Ordering::Relaxed) { c.flush() } } });
+            tauri::async_runtime::spawn(async move {
+                let mut n = 0u32;
+                loop {
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    if c.dirty.load(Ordering::Relaxed) { c.flush() }
+                    n += 1; if n % 1800 == 0 { pro::daily_backup(&c.dir, &c.file) } // about once an hour
+                }
+            });
             tracker(core.clone());
             // re-fetch art for games added offline, and once for games from 1.x so they get the newest sources
             let ids: Vec<String> = {
@@ -870,7 +985,8 @@ fn main() {
             lib_get, lib_add_dialog, lib_add_paths, lib_scan, lib_connect, game_launch, game_update, game_remove, game_show_file,
             art_search, art_apply, art_refetch, art_custom, stats_screenshots, app_settings, app_set, presence_test, details_get,
             col_create, col_rename, col_delete, col_toggle, owned_get, owned_open, friends_get, save_card, update_check, update_install, open_link, image_data,
-            news_get, downloads_get, store_info_get, profile_set, profile_pick, profile_clear
+            news_get, downloads_get, store_info_get, profile_set, profile_pick, profile_clear,
+            log_write, backups_list, backup_create, backup_restore, report_problem, open_issue, open_logs, app_ready
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nightfall");

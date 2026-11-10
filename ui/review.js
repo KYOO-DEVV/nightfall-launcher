@@ -55,7 +55,7 @@ renderers.review = async () => {
       <div class="rv-head"><p class="eyebrow">Nightfall · Year in review</p>
         <button class="btn btn-ghost sm" id="rvShare"><span>Share</span><span class="ic">${ICON.share}</span></button></div>
       <h1>Your ${Y}<br>in games</h1>
-      <p class="sub">${plays.length ? `Counted from ${new Date(first).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}${first > a + 7 * DAY ? ', the oldest play history Nightfall found on this PC' : ''}.` : 'Nothing tracked yet this year. Play something and come back.'}</p>
+      <p class="sub">${plays.length ? `Counted from ${new Date(first).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}${first > a + 7 * DAY ? ', the oldest play history Nightfall found on this PC' : ''}.` : 'Nothing tracked yet this year. Play something and come back.'}</p>
       <div class="rv-big">
         <div><b>${fmt(totalMs)}</b><span>played</span></div><div><b>${plays.length}</b><span>sessions</span></div>
         <div><b>${ranked.length}</b><span>${ranked.length === 1 ? 'game' : 'games'}</span></div><div><b>${longest ? fmt(longest.e - longest.s) : '—'}</b><span>longest</span></div>
@@ -70,7 +70,7 @@ renderers.review = async () => {
     </div>
     <div class="rv-facts2">
       ${fact('Favorite day', plays.length ? DOW[favDow] : '—', plays.length ? fmt(dow[favDow]) + ' on ' + DOW[favDow] + 's' : '')}
-      ${fact('Biggest day', busiest ? new Date(busiest[0]).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '—', busiest ? fmt(busiest[1]) + ' in one day' : '')}
+      ${fact('Biggest day', busiest ? new Date(busiest[0]).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' }) : '—', busiest ? fmt(busiest[1]) + ' in one day' : '')}
       ${fact('Night owl', (totalMs ? Math.round(night / totalMs * 100) : 0) + '%', 'played after 10 pm')}
       ${extra.slice(0, 2).map((x) => fact('Top ' + (x.kind === 'roblox' ? 'Roblox experience' : 'Minecraft instance'), esc(x.top.name), fmt(x.top.ms) + ' this year')).join('')}
       ${steamTop.length ? `<div class="panel rv-fact rv-steam2"><small>All-time on Steam</small><div>${steamTop.map((x) => `<span><i style="background-image:${bgu(x.cover)}"></i><b>${hours(x.playMin)}</b></span>`).join('')}</div></div>` : ''}

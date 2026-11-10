@@ -39,6 +39,14 @@
     profileClear: (kind) => call('profile_clear', { kind }),
     checkUpdate: () => call('update_check'),
     installUpdate: () => call('update_install'),
+    log: (level, msg) => call('log_write', { level, msg: String(msg).slice(0, 2000) }).catch(() => {}),
+    backups: () => call('backups_list'),
+    backupNow: () => call('backup_create'),
+    backupRestore: (name) => call('backup_restore', { name }),
+    report: (text) => call('report_problem', { text }),
+    openIssue: () => call('open_issue'),
+    openLogs: () => call('open_logs'),
+    ready: () => call('app_ready').catch(() => {}),
     onChange: (cb) => T.event.listen('lib:changed', (e) => cb(e.payload)),
     onDrag: (handlers) => {
       T.event.listen('tauri://drag-enter', () => handlers.enter());

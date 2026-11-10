@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nightfall Launcher</title>
+<meta name="description" content="Every game you own, in one place. A fast, private Windows game launcher with official artwork, real play time and match history.">
+<meta property="og:title" content="Nightfall Launcher">
+<meta property="og:description" content="Every game you own, in one place.">
+<meta property="og:image" content="https://kyoo-devv.github.io/nightfall-launcher/img/game.png">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#0b0b0d;--tile:#131316;--line:rgba(255,255,255,.08);--fg:#f4f4f6;--muted:#8b8b95;--accent:#a99cff;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(14px);background:rgba(11,11,13,.7);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:24px;height:60px}
+nav .brand{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none}
+nav .brand img{width:28px;height:28px;border-radius:7px}
+nav .links{margin-left:auto;display:flex;gap:22px;font-size:13.5px;font-weight:600}
+nav .links a{text-decoration:none;color:#c9c9d0}
+nav .links a:hover{color:#fff}
+.btn{display:inline-flex;align-items:center;gap:10px;height:46px;padding:0 22px;border-radius:12px;font-weight:700;text-decoration:none;font-size:14.5px;transition:transform .15s,background .2s}
+.btn:active{transform:scale(.97)}
+.btn.solid{background:#fff;color:#0b0b0d}
+.btn.solid:hover{background:#e9e9ee}
+.btn.ghost{border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.btn.ghost:hover{background:rgba(255,255,255,.07)}
+header.hero{padding:96px 0 40px;text-align:center;background:radial-gradient(60% 50% at 50% 0%,rgba(140,120,255,.18),transparent 70%)}
+header.hero img.logo{width:88px;height:88px;border-radius:22px;box-shadow:0 24px 70px rgba(120,110,220,.35)}
+h1{font-size:clamp(40px,7vw,72px);line-height:1.02;letter-spacing:-.04em;margin:28px 0 16px;font-weight:800}
+.lead{font-size:clamp(16px,2vw,19px);color:#b9b9c2;max-width:620px;margin:0 auto 32px}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.meta{margin-top:16px;font-size:12.5px;color:var(--muted)}
+.shot{margin:56px auto 0;max-width:1080px;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 50px 140px rgba(0,0,0,.7)}
+.shot img{display:block;width:100%;height:auto}
+section{padding:96px 0}
+h2{font-size:clamp(28px,4vw,40px);letter-spacing:-.03em;margin:0 0 12px;font-weight:800}
+.sub{color:var(--muted);margin:0 0 40px;max-width:620px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:var(--tile);border:1px solid var(--line);border-radius:16px;padding:24px}
+.card b{display:block;font-size:16px;margin-bottom:6px}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.card i{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:rgba(169,156,255,.12);color:var(--accent);font-style:normal;font-size:18px;margin-bottom:16px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.pair figure{margin:0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--tile)}
+.pair img{display:block;width:100%;height:auto}
+.pair figcaption{padding:12px 16px;font-size:13px;color:var(--muted)}
+.privacy{background:linear-gradient(135deg,rgba(74,222,128,.07),transparent 60%),var(--tile);border:1px solid var(--line);border-radius:20px;padding:40px;display:grid;grid-template-columns:1.2fr 1fr;gap:32px;align-items:center}
+.privacy ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.privacy li{display:flex;gap:12px;align-items:flex-start;font-size:14.5px}
+.privacy li::before{content:"✓";color:#7ee6a3;font-weight:800}
+.stores{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.stores span{padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:13px;font-weight:600}
+details{border-bottom:1px solid var(--line);padding:18px 0}
+summary{cursor:pointer;font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between}
+summary::after{content:"+";color:var(--muted);font-size:20px;line-height:1}
+details[open] summary::after{content:"–"}
+details p{color:#b9b9c2;margin:10px 0 0}
+.final{text-align:center}
+footer{border-top:1px solid var(--line);padding:32px 0;color:var(--muted);font-size:13px}
+footer .wrap{display:flex;gap:20px;flex-wrap:wrap}
+footer a{text-decoration:none}
+footer a:hover{color:#fff}
+@media (max-width:860px){.grid{grid-template-columns:1fr 1fr}.privacy{grid-template-columns:1fr;padding:28px}.pair{grid-template-columns:1fr}}
+@media (max-width:560px){.grid{grid-template-columns:1fr}nav .links a:not(.dl){display:none}header.hero{padding-top:64px}section{padding:64px 0}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="#"><img src="icon.png" alt="">Nightfall</a>
+  <div class="links"><a href="#features">Features</a><a href="#privacy">Privacy</a><a href="#faq">FAQ</a><a class="dl" href="https://github.com/KYOO-DEVV/nightfall-launcher/releases/latest">Download</a></div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <img class="logo" src="icon.png" alt="Nightfall">
+  <h1>Every game you own,<br>in one place.</h1>
+  <p class="lead">Nightfall finds the games on your PC, gives them their official artwork and tracks how long you really play. Fast, beautiful and completely private.</p>
+  <div class="cta">
+    <a class="btn solid" href="https://github.com/KYOO-DEVV/nightfall-launcher/releases/latest">Download for Windows</a>
+    <a class="btn ghost" href="https://github.com/KYOO-DEVV/nightfall-launcher">View on GitHub</a>
+  </div>
+  <p class="meta">Free · Windows 10 and 11 · Updates itself</p>
+  <div class="shot"><img src="img/game.png" alt="A game page in Nightfall, with play time, matches and modes played" width="1360" height="840"></div>
+</div></header>
+
+<section id="features"><div class="wrap">
+  <h2>Everything in one launcher</h2>
+  <p class="sub">No accounts to connect and nothing to configure. Open Nightfall and your games are already there.</p>
+  <div class="grid">
+    <div class="card"><i>◎</i><b>Every store</b><p>Steam, Epic, GOG, Ubisoft, Riot, HoYoPlay, EA, Rockstar, Xbox, Minecraft, Amazon and itch.io, found automatically.</p></div>
+    <div class="card"><i>◷</i><b>Real play time</b><p>Counted from the running game, even when you start it from Steam or a desktop shortcut.</p></div>
+    <div class="card"><i>⚑</i><b>Match history</b><p>Fortnite Victory Royales, Valorant maps and agents, Roblox experiences and Minecraft instances.</p></div>
+    <div class="card"><i>✦</i><b>News that matters</b><p>Banners and version countdowns for HoYoverse games, plus Fortnite, Valorant, League and Steam updates.</p></div>
+    <div class="card"><i>⬇</i><b>Your whole collection</b><p>Open any game you own, even uninstalled, and watch its cover fill with colour as it installs.</p></div>
+    <div class="card"><i>⌨</i><b>Mouse optional</b><p>Keyboard shortcuts for everything and full controller support for the couch.</p></div>
+  </div>
+  <div class="pair">
+    <figure><img src="img/library.png" alt="The library" loading="lazy" width="1360" height="840"><figcaption>Your library, with official covers for every game.</figcaption></figure>
+    <figure><img src="img/welcome.png" alt="The welcome tour" loading="lazy" width="1360" height="840"><figcaption>Set up in under a minute, the first time you open it.</figcaption></figure>
+  </div>
+  <div class="stores"><span>Steam</span><span>Epic Games</span><span>GOG</span><span>Ubisoft Connect</span><span>Riot Games</span><span>HoYoPlay</span><span>EA app</span><span>Rockstar</span><span>Xbox</span><span>Minecraft</span><span>Amazon Games</span><span>itch.io</span><span>Roblox</span></div>
+</div></section>
+
+<section id="privacy"><div class="wrap">
+  <div class="privacy">
+    <div><h2>Private by design</h2><p class="sub" style="margin:0">Most launchers want an account. Nightfall doesn't even have one. What you play is your business.</p></div>
+    <ul>
+      <li>No account, no sign-in, no analytics</li>
+      <li>Your library and play time never leave your PC</li>
+      <li>Online only for public artwork, news and updates</li>
+      <li>Daily backups, kept on your PC</li>
+      <li><span>Read the <a href="https://github.com/KYOO-DEVV/nightfall-launcher/blob/main/PRIVACY.md">privacy policy</a> in plain words</span></li>
+    </ul>
+  </div>
+</div></section>
+
+<section id="faq"><div class="wrap">
+  <h2>Questions</h2>
+  <details><summary>Is it free?</summary><p>Yes. The source code is public on GitHub.</p></details>
+  <details><summary>Does it replace Steam or Epic?</summary><p>No. Games still start through their own launchers, so achievements, cloud saves and friends keep working. Nightfall just puts them all in one place.</p></details>
+  <details><summary>Windows says "Windows protected your PC". Is it safe?</summary><p>The installer isn't code-signed yet, so SmartScreen doesn't recognise it. Click <b>More info → Run anyway</b>. The source code is public, and every update is signed and checked by the app before it installs.</p></details>
+  <details><summary>Will it slow down my games?</summary><p>No. Nightfall is written in Rust and checks running games every few seconds using almost no CPU or memory. You can keep it in the tray while you play.</p></details>
+  <details><summary>Something isn't working.</summary><p>Open <b>Settings → Help → Create a report</b> in the app, then <a href="https://github.com/KYOO-DEVV/nightfall-launcher/issues/new">open an issue</a> and attach the report from your Downloads folder.</p></details>
+</div></section>
+
+<section class="final"><div class="wrap">
+  <h2>Ready when you are.</h2>
+  <p class="sub" style="margin:0 auto 28px">Free for Windows 10 and 11.</p>
+  <a class="btn solid" href="https://github.com/KYOO-DEVV/nightfall-launcher/releases/latest">Download Nightfall</a>
+</div></section>
+
+<footer><div class="wrap">
+  <span>Nightfall Launcher</span>
+  <a href="https://github.com/KYOO-DEVV/nightfall-launcher">GitHub</a>
+  <a href="https://github.com/KYOO-DEVV/nightfall-launcher/releases">Releases</a>
+  <a href="https://github.com/KYOO-DEVV/nightfall-launcher/blob/main/PRIVACY.md">Privacy</a>
+  <a href="https://github.com/KYOO-DEVV/nightfall-launcher/issues/new">Report a problem</a>
+</div></footer>
+</body>
+</html>

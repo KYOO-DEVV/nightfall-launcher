@@ -10,8 +10,10 @@
 <link rel="stylesheet" href="layout.css">
 <link rel="stylesheet" href="more.css">
 <link rel="stylesheet" href="polish.css">
+<link rel="stylesheet" href="pro.css">
 </head>
 <body>
+<div class="splash" id="splash" aria-hidden="true"><div class="sp-in"><img src="icon.png" alt=""><b>Nightfall</b><i class="sp-bar"><i></i></i></div></div>
 <header class="titlebar" data-tauri-drag-region>
   <span class="tb-title" data-tauri-drag-region>Nightfall</span>
   <div class="wc">
@@ -235,7 +237,10 @@
           <button data-s="library"><span class="ic" data-icon="grid"></span>Library</button>
           <button data-s="discord"><span class="ic" data-icon="chat"></span>Discord</button>
           <button data-s="general"><span class="ic" data-icon="power"></span>Startup</button>
+          <button data-s="access"><span class="ic" data-icon="sparkle"></span>Accessibility</button>
+          <button data-s="backups"><span class="ic" data-icon="hdd"></span>Backups</button>
           <button data-s="updates"><span class="ic" data-icon="refresh"></span>Updates</button>
+          <button data-s="help"><span class="ic" data-icon="chat"></span>Help &amp; privacy</button>
         </nav>
         <p class="st-ver" id="sVersionSide"></p>
       </aside>
@@ -285,10 +290,47 @@
           </div>
         </section>
 
+        <section class="st-sec" id="st-access">
+          <header><h2>Accessibility</h2><p>Motion, keyboard and controller.</p></header>
+          <div class="st-card">
+            <div class="s-row"><div><b>Reduce motion</b><small>Turns off sliding, zooming and fading. "System" follows Windows' animation setting.</small></div>
+              <div class="seg-mini txt" id="sMotion"><button data-v="system">System</button><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+            <label class="s-row toggle"><div><b>Launch sound</b><small>A soft chime when a game starts.</small></div><input type="checkbox" id="sSounds"></label>
+            <div class="s-row"><div><b>Keyboard shortcuts</b><small>Everything works without a mouse. Press <kbd>?</kbd> anywhere to see the shortcuts.</small></div><button class="btn btn-ghost sm" id="sKeys"><span>Show shortcuts</span></button></div>
+            <div class="s-row"><div><b>Controller</b><small id="sPad">Plug in or turn on a controller and press any button.</small></div><span class="tag-off" id="sPadTag">Not connected</span></div>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-backups">
+          <header><h2>Backups</h2><p>Your library and play history are saved once a day, and the last 10 copies are kept.</p></header>
+          <div class="st-card">
+            <div class="s-row"><div><b>Back up now</b><small id="sBkSum">—</small></div><button class="btn btn-ghost sm" id="sBkNow"><span>Back up now</span></button></div>
+            <div class="bk-list" id="sBkList"></div>
+          </div>
+        </section>
+
         <section class="st-sec" id="st-updates">
           <header><h2>Updates</h2><p>Signed updates from GitHub, installed in one click.</p></header>
           <div class="st-card">
             <div class="s-row"><div><b id="sVersion">Nightfall</b><small id="sUpdate">—</small></div><button class="btn btn-ghost sm" id="sCheck"><span>Check now</span><span class="ic" data-icon="refresh"></span></button></div>
+            <div class="s-row"><div><b>What's new</b><small>Everything that changed in recent versions.</small></div><button class="btn btn-ghost sm" id="sNew"><span>See what's new</span></button></div>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-help">
+          <header><h2>Help &amp; privacy</h2><p>Something not working? Tell us in two clicks.</p></header>
+          <div class="st-card">
+            <div class="s-field">
+              <label for="sRepTxt">Report a problem</label>
+              <textarea id="sRepTxt" rows="3" maxlength="4000" placeholder="What happened, and what did you expect? (optional)"></textarea>
+              <div class="row rep-row"><button class="btn btn-solid sm" id="sRep"><span>Create a report</span></button><button class="btn btn-ghost sm" id="sIssue"><span>Open an issue on GitHub</span><span class="ic" data-icon="ext"></span></button><button class="btn btn-ghost sm" id="sLogs"><span>Log folder</span><span class="ic" data-icon="folder"></span></button></div>
+              <p class="help">The report is a text file saved to your Downloads folder. It has Nightfall's version, your Windows version, which stores were found and the recent log, and never your files, passwords or Windows user name. Nothing is sent unless you attach it yourself.</p>
+            </div>
+            <div class="s-row"><div><b>Welcome tour</b><small>See the first-run setup again.</small></div><button class="btn btn-ghost sm" id="sTour"><span>Start the tour</span></button></div>
+          </div>
+          <div class="st-card privacy">
+            <div class="s-row"><div><b>Your data stays on this PC</b><small>Nightfall has no account, no analytics and no tracking. Your library, play time and profile are stored only in your Windows user folder. It connects to the internet only to fetch artwork, news, store details and updates.</small></div></div>
+            <div class="s-row"><div><b>Privacy policy</b><small>The full version, in plain words.</small></div><button class="btn btn-ghost sm" id="sPrivacy"><span>Read it</span><span class="ic" data-icon="ext"></span></button></div>
           </div>
         </section>
       </div>
@@ -384,6 +426,34 @@
   </div>
 
 
+  <!-- first run -->
+  <div class="onb" id="onb" hidden>
+    <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
+      <div class="onb-steps" id="onbDots"><i class="on"></i><i></i><i></i></div>
+      <div class="onb-page" id="onbPage"></div>
+      <footer class="onb-foot"><button class="btn btn-ghost sm" id="onbBack"><span>Back</span></button><span class="grow"></span><button class="btn btn-ghost sm" id="onbSkip"><span>Skip</span></button><button class="btn btn-solid" id="onbNext"><span>Continue</span></button></footer>
+    </div>
+  </div>
+
+  <!-- What's new -->
+  <div class="modal-bg" id="whatsnew" hidden>
+    <div class="modal wn" role="dialog" aria-modal="true" aria-labelledby="wnTitle">
+      <header><h3 id="wnTitle">What's new</h3><button class="x" id="wnClose" aria-label="Close" data-icon="x"></button></header>
+      <div class="wn-body" id="wnBody"></div>
+      <footer><span class="help" id="wnFoot"></span><span class="grow"></span><button class="btn btn-solid sm" id="wnOk"><span>Got it</span></button></footer>
+    </div>
+  </div>
+
+  <!-- shortcuts -->
+  <div class="modal-bg" id="keys" hidden>
+    <div class="modal keys" role="dialog" aria-modal="true" aria-labelledby="kTitle">
+      <header><h3 id="kTitle">Shortcuts</h3><button class="x" id="kClose" aria-label="Close" data-icon="x"></button></header>
+      <div class="k-cols" id="kBody"></div>
+    </div>
+  </div>
+
+  <div class="net-pill" id="netPill" hidden><i></i><span>Offline · showing your saved library</span></div>
+  <div class="pad-hint" id="padHint" hidden></div>
   <div class="upd-bar" id="updBar" hidden><span id="updTxt"></span><button class="btn btn-solid sm" id="updGo"><span>Update now</span></button></div>
   <div class="toast" id="toast" role="status"></div>
 </div>
@@ -398,5 +468,6 @@
 <script src="store.js"></script>
 <script src="profile.js"></script>
 <script src="news.js"></script>
+<script src="pro.js"></script>
 </body>
 </html>
