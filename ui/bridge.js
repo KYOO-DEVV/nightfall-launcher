@@ -51,6 +51,7 @@
     achievements: (appid) => call('achievements_get', { appid }),
     screenshotsOf: (id) => call('game_screenshots', { id }),
     notify: (title, body) => call('os_notify', { title, body }).catch(() => {}),
+    trailer: (name) => call('trailer_find', { name }),
     onOwned: (cb) => T.event.listen('owned:changed', () => cb()),
     onChange: (cb) => T.event.listen('lib:changed', (e) => cb(e.payload)),
     onDrag: (handlers) => {

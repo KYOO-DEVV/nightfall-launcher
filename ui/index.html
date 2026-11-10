@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="polish.css">
 <link rel="stylesheet" href="pro.css">
 <link rel="stylesheet" href="more26.css">
+<link rel="stylesheet" href="video.css">
 </head>
 <body>
 <div class="splash" id="splash" aria-hidden="true"><div class="sp-in"><img src="icon.png" alt=""><b>Nightfall</b><i class="sp-bar"><i></i></i></div></div>
@@ -113,6 +114,8 @@
             <button class="btn btn-ghost icon-only fav-btn" id="favBtn" aria-label="Bookmark"></button>
             <button class="btn btn-ghost icon-only" id="pinBtn" aria-label="Pin to sidebar"></button>
             <button class="btn btn-ghost icon-only" id="shareGameBtn" aria-label="Share stats card" data-icon="share"></button>
+            <button class="btn btn-ghost icon-only" id="vidMute" hidden aria-label="Turn the sound on"></button>
+            <button class="btn btn-ghost" id="vidBtn"><span id="vidTxt">Video</span><span class="ic" data-icon="play"></span></button>
             <button class="btn btn-ghost news-btn" id="gNewsBtn" hidden><span>News</span><i class="nbadge" id="gNewsBadge" hidden></i><span class="ic" data-icon="news"></span></button>
             <button class="btn btn-ghost" id="setBtn"><span>Game settings</span><span class="ic set-ic"></span></button>
             <button class="btn btn-solid" id="playBtn"><span id="playTxt">Play</span><span class="ic" data-icon="play"></span></button>
@@ -180,7 +183,7 @@
       <div class="pf-head">
         <button class="pf-avatar" id="pfAvatar" aria-label="Change profile picture"><img id="pfAvatarImg" alt=""><span id="pfAvatarInit"></span><i>Change</i></button>
         <div class="pf-id">
-          <input class="pf-name" id="pfName" maxlength="32" spellcheck="false" aria-label="Name">
+          <div class="pf-nameline"><input class="pf-name" id="pfName" maxlength="32" spellcheck="false" aria-label="Name"><input class="pf-pron" id="pfPron" maxlength="24" spellcheck="false" placeholder="Pronouns" aria-label="Pronouns"></div>
           <input class="pf-bio" id="pfBio" maxlength="160" placeholder="Add a short bio, e.g. what you're playing these days" aria-label="Bio">
         </div>
         <div class="actions"><button class="btn btn-ghost sm" id="pfAvatarReset" hidden><span>Reset picture</span></button></div>
@@ -417,7 +420,8 @@
   <div class="modal-bg" id="showcase" hidden>
     <div class="modal pick" role="dialog" aria-modal="true" aria-labelledby="scTitle">
       <header><h3 id="scTitle">Showcase</h3><button class="x" id="scClose" aria-label="Close" data-icon="x"></button></header>
-      <p class="help">Pick up to 12 games for your profile, in the order you click them.</p>
+      <p class="help">Pick up to 12 games for your profile, in the order you click them. Any game you own works, even if it isn't installed.</p>
+      <input class="sc-q" id="scQ" type="search" placeholder="Search your games" autocomplete="off">
       <div class="pick-grid" id="scGrid"></div>
       <footer><span class="help" id="scCount"></span><span class="grow"></span><button class="btn btn-solid sm" id="scSave"><span>Save</span></button></footer>
     </div>
@@ -507,6 +511,7 @@
 <script src="news.js"></script>
 <script src="pro.js"></script>
 <script src="more26.js"></script>
+<script src="video.js"></script>
 <script src="i18n.js"></script>
 </body>
 </html>

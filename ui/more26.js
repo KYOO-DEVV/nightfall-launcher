@@ -30,11 +30,12 @@ async function loadShots(g) {
 const dateTxt = (t) => new Date(t).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 renderers.gameExtras = async (g) => {
   const [ach, shots] = await Promise.all([loadAch(g), loadShots(g)]);
-  if (featured() !== g || state.view !== 'game') return;
+  if ((featured() || {}).id !== g.id || state.view !== 'game') return;
   const aBtn = $('#dTabs [data-t="achievements"]'), sBtn = $('#dTabs [data-t="shots"]');
   aBtn.hidden = !ach; sBtn.hidden = !shots.length;
-  $('#hAchBox').hidden = !ach;
-  if (ach) $('#hAch').textContent = `${ach.unlocked}/${ach.total}`;
+  // while the hero text is switching games, wait for it so the old numbers never show the new count
+  const stat = () => { if ((featured() || {}).id !== g.id) return; $('#hAchBox').hidden = !ach; if (ach) $('#hAch').textContent = `${ach.unlocked}/${ach.total}`; };
+  if (document.querySelector('#hero .hero-stats.out')) setTimeout(stat, 320); else stat();
   const tab = document.querySelector('#dTabs button.on');
   // the tab you were on doesn't exist for this game: back to sessions
   if (tab && tab.hidden) document.querySelector('#dTabs [data-t="sessions"]').click();
@@ -62,7 +63,7 @@ renderers.gameExtras = async (g) => {
 };
 
 /* ---------------- library layout: grid or list, cover size ---------------- */
-$('#avView').querySelector('[data-v="grid"]').innerHTML = ICON.grid;
+$('#avView').querySelector('[data-v="grid"]').innerHTML = P('<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>');
 $('#avView').querySelector('[data-v="list"]').innerHTML = P('<path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>');
 renderers.libLayout = () => {
   const s = lib.settings || {}, view = s.libView || 'grid', size = s.cardSize || 150;

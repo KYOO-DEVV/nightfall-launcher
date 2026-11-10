@@ -52,6 +52,7 @@ function paintCardProgress(el) {
     if (done && now() - done < 8000 && !box.classList.contains('done')) { box.classList.add('done'); setTimeout(() => box.classList.remove('done'), 1600); }
     if (box.classList.contains('dl')) { box.classList.remove('dl', 'paused', 'indet'); box.querySelector('.cv-fill')?.remove(); }
     if (btn.dataset.dl) { btn.textContent = 'Install'; delete btn.dataset.dl; }
+    box.querySelector('.dl-pct')?.remove();
     return;
   }
   // the cover turns grey and fills back up with colour, bottom to top, as the game downloads
@@ -69,6 +70,9 @@ function paintCardProgress(el) {
   box.classList.toggle('indet', !d.total);
   box.style.setProperty('--fill', (d.total ? pct : 0) + '%');
   btn.dataset.dl = 1;
+  let tag = box.querySelector('.dl-pct');
+  if (!tag) { tag = document.createElement('span'); tag.className = 'dl-pct'; box.appendChild(tag); }
+  tag.textContent = d.state === 'paused' ? `Paused · ${Math.floor(pct)}%` : d.total ? Math.floor(pct) + '%' : 'Installing…';
   btn.textContent = d.state === 'paused' ? `Paused · ${Math.floor(pct)}%` : d.total ? Math.floor(pct) + '%' : 'Installing…';
 }
 renderers.paintCards = () => { if (state.view === 'all' && state.libTab === 'stores') document.querySelectorAll('#avGrid .av-card[data-key]').forEach(paintCardProgress); };

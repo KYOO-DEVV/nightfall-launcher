@@ -152,8 +152,11 @@ pub struct Profile {
     /// files inside the data folder's profile/ directory
     pub avatar: Option<String>,
     pub banner: Option<String>,
-    /// game ids shown on the profile, in order
+    /// game ids shown on the profile, in order ("own:<store key>" for games you own but haven't installed)
     pub showcase: Vec<String>,
+    /// name and cover of the not-installed games in the showcase, so the profile never has to wait for the stores
+    pub showcase_owned: std::collections::HashMap<String, Value>,
+    pub pronouns: String,
     pub ver: i64,
 }
 

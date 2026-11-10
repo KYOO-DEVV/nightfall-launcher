@@ -36,6 +36,7 @@ Nightfall connects to the internet only to fetch public information:
 - **Artwork and game details** from Steam, Epic Games, the Microsoft Store, Roblox and Wikipedia.
 - **News and match details** from public sources: HoYoverse, fortnite-api.com, valorant-api.com, playvalorant.com, leagueoflegends.com and Steam.
 - **Steam friends' public profile cards** (`steamcommunity.com/miniprofile`), only if you're signed in to Steam on the PC.
+- **Trailers**, only when you press Video on a game page: the game's name is searched on YouTube, and the trailer plays in YouTube's privacy-enhanced player (youtube-nocookie.com), which doesn't use cookies to track you until you interact with it.
 - **Updates** from this GitHub repository.
 - **Discord Rich Presence**, only if you turn it on: the name of the game you're playing goes to the Discord app on your PC, which shows it on your profile.
 

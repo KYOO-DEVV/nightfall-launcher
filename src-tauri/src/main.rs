@@ -96,7 +96,7 @@ fn public_profile(p: &Profile) -> Value {
     let url = |x: &Option<String>| x.as_deref().and_then(|f| asset_url(f, p.ver));
     json!({
         "name": if p.name.trim().is_empty() { steam.as_ref().map(|a| a.persona.clone()).unwrap_or_else(|| "Player".into()) } else { p.name.clone() },
-        "bio": p.bio, "showcase": p.showcase,
+        "bio": p.bio, "showcase": p.showcase, "showcaseOwned": p.showcase_owned, "pronouns": p.pronouns,
         "avatar": url(&p.avatar).or_else(|| steam_avatar.as_deref().and_then(|f| asset_url(f, 0))),
         "banner": url(&p.banner), "customAvatar": p.avatar.is_some(), "customBanner": p.banner.is_some(),
     })
@@ -354,6 +354,21 @@ fn widget_close(core: C<'_>) {
 #[tauri::command]
 fn os_notify(core: C<'_>, title: String, body: String) {
     os_notice(core.inner(), &title.chars().take(120).collect::<String>(), &body.chars().take(300).collect::<String>());
+}
+/// YouTube videos for a game's trailer, best match first (the page shows them with youtube-nocookie)
+#[tauri::command]
+async fn trailer_find(name: String) -> R<Vec<String>> {
+    let q = format!("{} official trailer", name.chars().take(80).collect::<String>());
+    let url = format!("https://www.youtube.com/results?search_query={}", urlencoding::encode(&q));
+    let html = HTTP.get(&url).header("Accept-Language", "en").send().await.map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?;
+    let mut ids: Vec<String> = vec![];
+    for c in regex::Regex::new(r#""videoId":"([A-Za-z0-9_-]{11})""#).unwrap().captures_iter(&html) {
+        let id = c[1].to_string();
+        if !ids.contains(&id) { ids.push(id) }
+        if ids.len() >= 5 { break }
+    }
+    if ids.is_empty() { pro::log("warn", &format!("no trailer found for {name}")) }
+    Ok(ids)
 }
 /// achievements from Steam's cache on this PC
 #[tauri::command]
@@ -878,10 +893,22 @@ fn profile_set(core: C<'_>, patch: Value) {
         let p = &mut db.profile;
         if let Some(n) = patch["name"].as_str() { p.name = n.trim().chars().take(32).collect() }
         if let Some(b) = patch["bio"].as_str() { p.bio = b.trim().chars().take(160).collect() }
+        if let Some(b) = patch["pronouns"].as_str() { p.pronouns = b.trim().chars().take(24).collect() }
+        if let Some(m) = patch["ownedMeta"].as_object() {
+            for (k, v) in m {
+                if !k.starts_with("own:") || k.len() > 80 { continue }
+                let s = |f: &str| v[f].as_str().map(|x| x.chars().take(400).collect::<String>());
+                p.showcase_owned.insert(k.clone(), json!({ "name": s("name"), "cover": s("cover"), "header": s("header"), "store": s("store"), "id": s("id") }));
+            }
+        }
         if let Some(sc) = patch["showcase"].as_array() {
             let mut v: Vec<String> = vec![];
-            for x in sc.iter().filter_map(|x| x.as_str()) { if ids.iter().any(|i| i == x) && !v.iter().any(|y| y == x) { v.push(x.to_string()) } }
+            for x in sc.iter().filter_map(|x| x.as_str()) {
+                let ok = ids.iter().any(|i| i == x) || p.showcase_owned.contains_key(x);
+                if ok && !v.iter().any(|y| y == x) { v.push(x.to_string()) }
+            }
             v.truncate(12);
+            p.showcase_owned.retain(|k, _| v.contains(k));
             p.showcase = v;
         }
     }
@@ -1133,7 +1160,7 @@ fn main() {
             col_create, col_rename, col_delete, col_toggle, owned_get, owned_open, friends_get, save_card, update_check, update_install, open_link, image_data,
             news_get, downloads_get, store_info_get, profile_set, profile_pick, profile_clear,
             log_write, backups_list, backup_create, backup_restore, report_problem, open_issue, open_logs, app_ready,
-            pins_order, achievements_get, game_screenshots, os_notify, widget_close
+            pins_order, achievements_get, game_screenshots, os_notify, widget_close, trailer_find
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nightfall");
