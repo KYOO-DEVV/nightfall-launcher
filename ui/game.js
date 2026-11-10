@@ -17,8 +17,11 @@ function renderHeroLive(g) {
   $('#hSessions').textContent = Math.max(g.sessions.length + (g.open ? 1 : 0), ex ? ex.count : 0);
   $('#hSessions').parentElement.nextElementSibling.textContent = ex && ex.matches ? 'Matches' : 'Sessions';
   $('#hSteamBox').hidden = !g.steamMin; $('#hSteam').textContent = hours(g.steamMin || 0);
+  if (g.open && launching.id === g.id) launching.id = null;
+  const starting = !g.open && launching.id === g.id;
   $('#playBtn').classList.toggle('running', !!g.open);
-  $('#playTxt').textContent = g.open ? 'Running' : 'Play';
+  $('#playBtn').classList.toggle('launching', starting);
+  $('#playTxt').textContent = g.open ? `Running · ${clock(now() - g.open.s)}` : starting ? 'Launching…' : 'Play';
   const fav = $('#favBtn');
   if (fav.dataset.g !== g.id || fav.classList.contains('on') !== !!g.fav) { paintBookmark(fav, g.fav, false); fav.dataset.g = g.id; }
   fav.setAttribute('aria-label', g.fav ? 'Remove bookmark' : 'Bookmark');
@@ -32,6 +35,7 @@ function renderHero(g) {
   if (key === shownHero) return;
   const switching = !!shownHero && shownHero.split('|')[0] !== g.id;
   shownHero = key;
+  paintGameColour(g);
   const box = $('#heroArt'), logo = $('#logo');
   const copy = document.querySelector('#hero .hero-copy'), stats = document.querySelector('#hero .hero-stats');
   const h = heroOf(g);
@@ -135,9 +139,11 @@ async function renderDetail(g, force) {
   const mBtn = $('#dTabs [data-t="matches"]');
   mBtn.hidden = !matches.length;
   if (!matches.length && dTab === 'matches') dTab = 'sessions';
-  if (matches.length && !renderDetail.auto) { dTab = 'matches'; } renderDetail.auto = matches.length > 0;
+  if (matches.length && !renderDetail.auto && dTab === 'sessions') { dTab = 'matches'; } renderDetail.auto = matches.length > 0;
   $('#dTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === dTab));
   $('#dSessions').hidden = dTab !== 'sessions'; $('#dMatches').hidden = dTab !== 'matches';
+  $('#dAch').hidden = dTab !== 'achievements'; $('#dShots').hidden = dTab !== 'shots';
+  if (renderers.gameExtras) renderers.gameExtras(g);
   $('#dTabSub').textContent = dTab === 'matches' ? `${matches.length} · ${d.source}` : '';
   const recent = [...plays].sort((a, b) => b.s - a.s).slice(0, 30);
   $('#dSessions').innerHTML = recent.length ? recent.map((p) => {
@@ -209,7 +215,12 @@ renderers.gameTick = () => {
   const g = featured(); if (g) renderHeroLive(g);
   const s = document.querySelector('#dLive [data-since]'); if (s) s.textContent = clock(now() - +s.dataset.since);
 };
-$('#playBtn').onclick = () => launch(featured());
+const launching = { id: null, t: 0 };
+$('#playBtn').onclick = () => {
+  const g = featured(); if (!g) return;
+  if (!g.open) { launching.id = g.id; launching.t = now(); renderHeroLive(g); setTimeout(() => { if (launching.id === g.id) { launching.id = null; const f = featured(); if (f) renderHeroLive(f); } }, 25000); }
+  launch(g);
+};
 $('#setBtn').onclick = () => openModal(featured().id);
 $('#favBtn').onclick = async () => {
   const g = featured(); const on = !g.fav;

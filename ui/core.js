@@ -7,7 +7,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const bgu = (u) => `url('${String(u).replace(/'/g, '%27')}')`;
 const DAY = 864e5;
 // one language across the app: English words with day-month dates and a 24-hour clock
-const LOCALE = 'en-GB';
+let LOCALE = 'en-GB';
 const now = () => Date.now();
 function weekStart(t = now()) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; }
 function spans(g) { const s = g.sessions.map((x) => [x.s, x.e]); if (g.open) s.push([g.open.s, now()]); return s; }
@@ -117,7 +117,9 @@ function paintIcons(root = document) { root.querySelectorAll('[data-icon]').forE
 let lib = { games: [], settings: {}, collections: [] };
 const state = { view: 'home', sel: null, shots: 0, shelf: 'recent', libTab: 'mine', filter: 'all', owned: null, store: null, downloads: [] };
 const STORE_LABEL = { steam: 'Steam', epic: 'Epic Games', gog: 'GOG', ubisoft: 'Ubisoft Connect', riot: 'Riot Games', hoyo: 'HoYoPlay', ea: 'EA app', rockstar: 'Rockstar', xbox: 'Xbox', minecraft: 'Minecraft', amazon: 'Amazon Games', itch: 'itch.io', other: 'Other launchers', manual: 'Added by you' };
-const gameById = (id) => lib.games.find((g) => g.id === id);
+const gameById = (id) => (lib.allGames || lib.games).find((g) => g.id === id);
+/* hidden games stay in lib.allGames only, so every page leaves them out by itself */
+function takeLib(data) { data.allGames = data.games; data.games = data.games.filter((g) => !g.hidden); return data; }
 function ordered(tab = 'recent') {
   const gs = [...lib.games];
   if (tab === 'most') return gs.sort((a, b) => total(b) - total(a) || b.addedAt - a.addedAt);
@@ -194,7 +196,7 @@ tipFor($('#settingsBtn'), () => 'Settings');
 let railKey = '';
 function renderRail() {
   const f = state.view === 'game' ? featured() : null;
-  const list = ordered('recent').filter((g) => g.pinned);
+  const list = ordered('recent').filter((g) => g.pinned).sort((a, b) => (a.pinOrder || 1e9) - (b.pinOrder || 1e9));
   const key = list.map((g) => [g.id, g.art.icon, !!g.open, f && g.id === f.id].join()).join(';') + '|' + list.length;
   if (key === railKey) return; railKey = key;
   rail.innerHTML = list.length ? '' : '<span class="rail-empty" title="Pin games from their page">' + ICON.pin + '</span>';
@@ -204,6 +206,7 @@ function renderRail() {
     b.setAttribute('aria-label', g.name);
     b.innerHTML = (g.art.icon ? `<img src="${esc(g.art.icon)}" alt="">` : `<span class="ph">${esc(g.name[0] || '?')}</span>`) + (g.open ? '<i class="live"></i>' : '');
     b.onclick = () => select(g.id);
+    b.draggable = true; b.dataset.id = g.id;
     tipFor(b, () => g.name + (g.open ? ' · playing' : ''));
     rail.appendChild(b);
   }
@@ -216,6 +219,21 @@ function renderProfileBtn() {
   if (p.avatar) { if (img.getAttribute('src') !== p.avatar) img.src = p.avatar; img.hidden = false; $('#profileInit').textContent = ''; }
   else { img.hidden = true; img.removeAttribute('src'); $('#profileInit').textContent = ((p.name || 'P').trim()[0] || 'P').toUpperCase(); }
 }
+
+/* drag pinned games to reorder them */
+let dragPin = null;
+rail.addEventListener('dragstart', (e) => { dragPin = e.target.closest('.thumb'); if (!dragPin) return; dragPin.classList.add('dragging'); tip.classList.remove('show'); e.dataTransfer.effectAllowed = 'move'; });
+rail.addEventListener('dragover', (e) => {
+  if (!dragPin) return; e.preventDefault();
+  const over = e.target.closest('.thumb'); if (!over || over === dragPin) return;
+  const r = over.getBoundingClientRect();
+  rail.insertBefore(dragPin, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+});
+rail.addEventListener('dragend', () => {
+  if (!dragPin) return; dragPin.classList.remove('dragging'); dragPin = null;
+  const ids = [...rail.querySelectorAll('.thumb')].map((x) => x.dataset.id);
+  railKey = ''; nf.pinsOrder(ids);
+});
 
 /* ---------------- launching ---------------- */
 async function launch(g) {
@@ -437,8 +455,9 @@ async function refreshShots() { try { state.shots = await nf.screenshots(weekSta
 
 window.addEventListener('DOMContentLoaded', async () => {
   paintIcons();
-  nf.onChange((data) => { lib = data; render(); });
-  lib = await nf.get();
+  nf.onChange((data) => { lib = takeLib(data); render(); });
+  lib = takeLib(await nf.get());
+  if (window.beforeFirstRender) beforeFirstRender();
   go(lib.games.length ? 'home' : 'home');
   render();
   refreshShots();

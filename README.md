@@ -26,9 +26,13 @@
 - **News** for the games you play: HoYoverse banners and version countdowns, Fortnite, Valorant, League of Legends and Steam announcements.
 - **Your stores.** Open any game you own, even if it isn't installed, and watch installs fill its cover with colour.
 - **Profile and sharing.** Picture, banner, bio, a showcase of your favourite games, Year in review and shareable stat cards.
+- **Steam achievements and screenshots** on every game page, read from your PC.
+- **Made for you.** Each game page takes the colour of its art; accent colours, grid or list library, launch options per game, daily limits and a weekly recap.
+- **English and French**, chosen automatically from Windows.
 - **Steam friends** and what they're playing, with no API key.
 - **Discord** shows the game you're playing.
 - **Works without a mouse.** Full keyboard shortcuts (press <kbd>?</kbd>) and controller support.
+- **Session timer** (optional) that stays on top of your game.
 - **Dependable.** Daily backups, automatic repair of a damaged library, offline mode, signed automatic updates.
 
 | | |

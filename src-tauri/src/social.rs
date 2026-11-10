@@ -151,3 +151,13 @@ async fn with_key(key: &str, id64: &str) -> R<Vec<Friend>> {
     sort(&mut out);
     Ok(out)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_vdf;
+    #[test]
+    fn reads_steam_text_vdf() {
+        let v = parse_vdf("\"UserLocalConfigStore\"\n{\n\t\"friends\"\n\t{\n\t\t\"123\"\n\t\t{\n\t\t\t\"name\"\t\t\"Kyle\"\n\t\t}\n\t}\n}\n");
+        assert_eq!(v.get("UserLocalConfigStore").and_then(|r| r.get("friends")).and_then(|f| f.get("123")).and_then(|x| x.get("name")).and_then(|n| n.str()), Some("Kyle"));
+    }
+}

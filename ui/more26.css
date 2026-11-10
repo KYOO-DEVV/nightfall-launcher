@@ -1,0 +1,103 @@
+/* ===== 2.6: game colour, live Play button, achievements & screenshots, library layout, accent colour ===== */
+
+/* ---------- accent colour (white keeps the original look) ---------- */
+:root{--accent:#fff;--accent-ink:#0b0b0d;--accent-hover:#e9e9ee;--toggle:var(--live)}
+:root[data-accent=violet]{--accent:#c4b8ff;--accent-ink:#1a1036;--accent-hover:#d4cbff;--toggle:#a593ff}
+:root[data-accent=blue]{--accent:#9fcaff;--accent-ink:#0b1d33;--accent-hover:#b6d7ff;--toggle:#6aaeff}
+:root[data-accent=green]{--accent:#8ff0b5;--accent-ink:#0b2616;--accent-hover:#a8f5c6;--toggle:#4ade80}
+:root[data-accent=pink]{--accent:#ffb3d9;--accent-ink:#36102a;--accent-hover:#ffc6e2;--toggle:#ff7ab8}
+:root[data-accent=orange]{--accent:#ffc58a;--accent-ink:#331b06;--accent-hover:#ffd3a6;--toggle:#ff9f43}
+.btn-solid{background:var(--accent);color:var(--accent-ink)}
+.btn-solid .ic{background:var(--accent-ink);color:var(--accent)}
+.btn-solid:hover{background:var(--accent-hover)}
+.s-row input[type=checkbox]:checked{background:var(--toggle)}
+.rail-ind{background:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 50%,transparent)}
+.seg-mini button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.onb-steps i.on{background:var(--accent)}
+.chip.on{background:var(--accent);color:var(--accent-ink)}
+.swatches{display:flex;gap:8px}
+.swatches button{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);transition:transform .2s var(--spring),box-shadow .2s}
+.swatches button:hover{transform:scale(1.1)}
+.swatches button.on{box-shadow:0 0 0 2px var(--win),0 0 0 4px #fff}
+.swatches [data-v=white]{background:#fff}.swatches [data-v=violet]{background:#c4b8ff}.swatches [data-v=blue]{background:#9fcaff}
+.swatches [data-v=green]{background:#8ff0b5}.swatches [data-v=pink]{background:#ffb3d9}.swatches [data-v=orange]{background:#ffc58a}
+.st-note{margin:0;padding:12px 0 14px;border-top:1px solid rgba(255,255,255,.045)}
+
+/* ---------- each game in its own colour (glides between games) ---------- */
+@property --gr{syntax:'<number>';inherits:true;initial-value:140}
+@property --gg{syntax:'<number>';inherits:true;initial-value:140}
+@property --gb{syntax:'<number>';inherits:true;initial-value:160}
+#game{transition:--gr .8s ease,--gg .8s ease,--gb .8s ease;--gc:rgb(var(--gr) var(--gg) var(--gb))}
+#game .hero2::before{content:"";position:absolute;right:-10%;bottom:-30%;width:70%;height:90%;background:radial-gradient(closest-side,rgb(var(--gr) var(--gg) var(--gb) / .28),transparent);pointer-events:none;z-index:1;filter:blur(10px)}
+#game .detail2 .panel{background:linear-gradient(180deg,rgb(var(--gr) var(--gg) var(--gb) / .07),transparent 55%),var(--tile);border-color:rgb(var(--gr) var(--gg) var(--gb) / .14)}
+#game .hstat{border-color:rgb(var(--gr) var(--gg) var(--gb) / .22)}
+#game .chip{border-color:rgb(var(--gr) var(--gg) var(--gb) / .3)}
+#game .d-chart .has i{background:rgb(var(--gr) var(--gg) var(--gb) / .75)}
+#game .d-chart .today i{background:rgb(var(--gr) var(--gg) var(--gb))}
+#game .p-tabs button.on{color:#fff;box-shadow:inset 0 -2px 0 var(--gc)}
+#game .bar i{background:var(--gc)}
+
+/* ---------- Play: starting, then running with a live timer ---------- */
+#playBtn{min-width:96px;justify-content:space-between}
+#playBtn.launching{pointer-events:none}
+#playBtn.launching .ic svg{opacity:0}
+#playBtn.launching .ic{position:relative}
+#playBtn.launching .ic::after{content:"";position:absolute;inset:5px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+#playBtn.running .ic{position:relative}
+#playBtn.running .ic::before{content:"";position:absolute;inset:-3px;border-radius:9px;border:2px solid var(--live);opacity:0;animation:livePulse 1.8s ease-out infinite}
+#playBtn #playTxt{font-variant-numeric:tabular-nums}
+@keyframes livePulse{0%{opacity:.8;transform:scale(.85)}100%{opacity:0;transform:scale(1.35)}}
+
+/* ---------- achievements ---------- */
+.d-ach,.d-shots{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#2a2a30 transparent;margin-top:10px}
+.d-ach[hidden],.d-shots[hidden]{display:none}
+.ach-top{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:4px 10px;padding:4px 0 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.ach-top b{font:800 22px var(--display);letter-spacing:-.02em}
+.ach-top span{font-size:11px;color:var(--muted)}
+.ach-top .bar{grid-column:1/-1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+.ach-top .bar i{display:block;height:100%;border-radius:3px;transition:width .6s var(--ease-out)}
+.d-ach ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.d-ach li{display:flex;align-items:center;gap:11px;padding:7px 4px;border-radius:8px}
+.d-ach li:hover{background:rgba(255,255,255,.03)}
+.a-ic{width:34px;height:34px;flex:none;border-radius:7px;background:#1b1b20 center/cover}
+.d-ach li:not(.on) .a-ic{filter:grayscale(1);opacity:.45}
+.a-tx{flex:1;min-width:0}
+.a-tx b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-tx small{display:block;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-ach li:not(.on) .a-tx b{color:#9a9aa5}
+.a-at{font-size:10px;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+
+/* ---------- screenshots ---------- */
+.d-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;align-content:start}
+.d-shots button{aspect-ratio:16/9;border-radius:8px;background:#18181c center/cover;outline:1px solid var(--line);transition:transform .2s var(--ease),outline-color .2s}
+.d-shots button:hover{transform:scale(1.03);outline-color:rgba(255,255,255,.4)}
+
+/* ---------- library: cover size, list view, New, hidden, finished downloads ---------- */
+.av-grid{grid-template-columns:repeat(auto-fill,minmax(var(--card,150px),1fr))}
+#avSize{width:96px;accent-color:var(--accent)}
+#avView button svg{width:14px;height:14px}
+#avHidden.on{background:rgba(255,255,255,.08)}
+.av-grid.list{grid-template-columns:1fr;gap:4px}
+.av-grid.list .av-card{flex-direction:row;align-items:center;gap:14px;padding:6px 10px 6px 6px;border-radius:12px;contain-intrinsic-size:auto 66px;transition:background .2s}
+.av-grid.list .av-card:hover{background:rgba(255,255,255,.035)}
+.av-grid.list .av-img{width:36px;flex:none;border-radius:7px}
+.av-grid.list .av-img .store,.av-grid.list .av-img .live-dot,.av-grid.list .av-img .fav-dot,.av-grid.list .av-img .nm,.av-grid.list .av-img .lg{display:none}
+.av-grid.list .av-meta{flex:1}
+.av-grid.list .av-meta b{font-size:12.5px}
+.av-grid.list .av-meta small{font-size:10.5px}
+.av-grid.list .av-btns{width:150px;flex:none}
+.av-grid.list .new-badge{position:static;margin-left:8px}
+.new-badge{position:absolute;right:7px;top:7px;z-index:3;padding:3px 7px;border-radius:5px;background:var(--accent);color:var(--accent-ink);font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.av-img.done::after{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);background-size:250% 100%;animation:doneSweep 1.2s var(--ease-out) both}
+.av-img.done{animation:donePop .6s var(--spring)}
+@keyframes doneSweep{from{background-position:150% 0}to{background-position:-50% 0}}
+@keyframes donePop{40%{transform:scale(1.04)}}
+
+/* ---------- sidebar: dragging a pinned game ---------- */
+.thumb.dragging{opacity:.35;transform:scale(.9)}
+.thumb[draggable=true]{cursor:grab}
+
+/* ---------- Game settings additions ---------- */
+.modal select{height:32px;border-radius:8px;border:1px solid var(--line);background:var(--tile);color:var(--fg);padding:0 8px;font:600 11.5px var(--sans)}
+.modal .s-row{gap:12px}
+#game .hero-copy{width:min(560px,56%)}

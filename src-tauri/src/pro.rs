@@ -93,3 +93,16 @@ pub fn report(version: &str, games: usize, stores: &[String], extra: &str) -> St
         if extra.trim().is_empty() { "(not described)" } else { extra.trim() }, if log_tail.is_empty() { "(empty)".into() } else { log_tail }
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn reports_never_contain_the_user_folder() {
+        let home = std::env::var("USERPROFILE").unwrap_or_default();
+        if home.len() > 3 {
+            let s = super::scrub(&format!("failed to open {home}{}", r"\AppData\x.json"));
+            assert!(!s.contains(&home));
+            assert!(s.contains("%USERPROFILE%"));
+        }
+    }
+}

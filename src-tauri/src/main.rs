@@ -5,6 +5,7 @@ mod details;
 mod extra;
 mod libraries;
 mod matches;
+mod play;
 mod presence;
 mod pro;
 mod scan;
@@ -24,6 +25,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_updater::UpdaterExt;
 use util::*;
 
@@ -52,6 +54,7 @@ pub struct Core {
     auto_at: Mutex<i64>,
     profile_dir: PathBuf,
     dir: PathBuf,
+    owned_busy: AtomicBool,
 }
 type C<'a> = State<'a, Arc<Core>>;
 
@@ -104,7 +107,8 @@ fn public_game(g: &Game) -> Value {
         "id": g.id, "name": g.name, "exe": g.exe, "proc": g.proc_, "addedAt": g.added_at, "appid": g.appid,
         "desc": g.desc.clone().unwrap_or_default(), "sessions": g.sessions, "open": g.open, "status": if g.status.is_empty() { "ready" } else { &g.status },
         "source": g.source.clone().unwrap_or_else(|| "manual".into()), "logoMono": g.logo_mono, "tint": g.tint, "fav": g.fav,
-        "detail": details::kind_of(g), "steamMin": g.steam_min, "live": g.live, "pinned": g.pinned,
+        "detail": details::kind_of(g), "steamMin": g.steam_min, "live": g.live, "pinned": g.pinned, "pinOrder": g.pin_order, "hidden": g.hidden,
+        "launchArgs": g.launch_args, "runAsAdmin": g.run_as_admin, "hideOnLaunch": g.hide_on_launch, "limitMin": g.limit_min,
         "art": { "cover": a(&g.art.cover), "hero": a(&g.art.hero), "logo": a(&g.art.logo), "header": a(&g.art.header), "icon": a(&g.art.icon) },
     })
 }
@@ -276,11 +280,95 @@ fn tracker(core: Arc<Core>) {
                 }
             }
             if changed || any_open { core.mark() }
-            if changed { core.notify(); update_tray_tip(&core) }
+            if changed { core.notify(); update_tray_tip(&core); sync_widget(&core, any_open) }
+            check_limits(&core, now);
+            weekly_recap(&core, now);
             push_presence(&core);
             tokio::time::sleep(Duration::from_millis(TICK_MS)).await;
         }
     });
+}
+
+/* ---------------- reminders, recap, session widget ---------------- */
+fn french(core: &Arc<Core>) -> bool {
+    let l = core.db.lock().unwrap().settings.language.clone();
+    l == "fr" || (l == "auto" && reg_value(r"HKCU\Control Panel\International", "LocaleName").map(|v| v.to_lowercase().starts_with("fr")).unwrap_or(false))
+}
+fn os_notice(core: &Arc<Core>, title: &str, body: &str) {
+    let _ = core.app.notification().builder().title(title).body(body).show();
+}
+/// a gentle reminder, once a day, when a game passes the daily time you set
+fn check_limits(core: &Arc<Core>, now: i64) {
+    let day = play::local_midnight(now);
+    let hit: Vec<(String, i64)> = {
+        let mut db = core.db.lock().unwrap();
+        let mut v = vec![];
+        for g in db.games.iter_mut().filter(|g| g.open.is_some() && g.limit_min > 0 && g.limit_day != day) {
+            let today = play::played_between(g, day, i64::MAX, now);
+            if today >= g.limit_min * 60_000 { g.limit_day = day; v.push((g.name.clone(), today)); }
+        }
+        v
+    };
+    for (name, ms) in hit {
+        core.mark();
+        if french(core) { os_notice(core, &format!("{name} · limite atteinte"), &format!("Tu as joué {} aujourd'hui. Pense à faire une pause.", play::hm(ms))) }
+        else { os_notice(core, &format!("{name} · daily limit reached"), &format!("You've played {} today. Time for a break?", play::hm(ms))) }
+    }
+}
+/// on the first start of a new week: how last week went
+fn weekly_recap(core: &Arc<Core>, now: i64) {
+    let week = play::iso_week(now);
+    let games = {
+        let mut db = core.db.lock().unwrap();
+        if db.settings.last_recap_week == week { return }
+        let first = db.settings.last_recap_week.is_empty();
+        db.settings.last_recap_week = week;
+        if first || !db.settings.weekly_recap { drop(db); core.mark(); return }
+        db.games.clone()
+    };
+    core.mark();
+    if let Some((t, b)) = play::recap(&games, now, french(core)) { os_notice(core, &t, &b) }
+}
+/// the little session timer window, open only while a game runs
+fn sync_widget(core: &Arc<Core>, playing: bool) {
+    let want = playing && core.db.lock().unwrap().settings.widget;
+    let have = core.app.get_webview_window("widget");
+    match (want, have) {
+        (true, None) => {
+            let (mut x, mut y) = (1600.0, 24.0);
+            if let Ok(Some(m)) = core.app.primary_monitor() { let s = m.size().to_logical::<f64>(m.scale_factor()); x = s.width - 276.0; y = 24.0; }
+            let _ = tauri::WebviewWindowBuilder::new(&core.app, "widget", tauri::WebviewUrl::App("widget.html".into()))
+                .title("Nightfall session").inner_size(252.0, 64.0).position(x, y).decorations(false).resizable(false)
+                .always_on_top(true).skip_taskbar(true).focused(false).shadow(true).build();
+        }
+        (false, Some(w)) => { let _ = w.destroy(); }
+        _ => {}
+    }
+}
+#[tauri::command]
+fn widget_close(core: C<'_>) {
+    { core.db.lock().unwrap().settings.widget = false; }
+    core.mark(); core.notify();
+    if let Some(w) = core.app.get_webview_window("widget") { let _ = w.destroy(); }
+}
+#[tauri::command]
+fn os_notify(core: C<'_>, title: String, body: String) {
+    os_notice(core.inner(), &title.chars().take(120).collect::<String>(), &body.chars().take(300).collect::<String>());
+}
+/// achievements from Steam's cache on this PC
+#[tauri::command]
+fn achievements_get(core: C<'_>, appid: i64) -> Option<Value> {
+    let acct = libraries::steam_account()?;
+    play::achievements(&scan::steam_root(), &acct.account_id, appid, french(core.inner()))
+}
+/// a game's own screenshots: Steam, Xbox Game Bar and NVIDIA folders
+#[tauri::command]
+fn game_screenshots(core: C<'_>, id: String) -> Value {
+    let Some(g) = core.db.lock().unwrap().by_id(&id).cloned() else { return json!([]) };
+    let videos = core.app.path().video_dir().unwrap_or_else(|_| home().join("Videos"));
+    let (dirs, files) = play::screenshots(&g, &scan::steam_root(), &videos);
+    for d in &dirs { let _ = core.app.asset_protocol_scope().allow_directory(d, false); }
+    json!(files.into_iter().filter_map(|(p, at)| asset_url(&p.to_string_lossy(), 0).map(|u| json!({ "url": u, "at": at }))).collect::<Vec<_>>())
 }
 
 /* ---------------- Discord ---------------- */
@@ -429,13 +517,33 @@ fn game_launch(core: C<'_>, id: String) -> Option<String> {
 }
 fn launch_game(core: &Arc<Core>, id: &str) -> Option<String> {
     let g = { core.db.lock().unwrap().by_id(id).cloned() }?;
+    let err = start_game(&g);
+    if err.is_none() && g.hide_on_launch { if let Some(w) = core.app.get_webview_window("main") { let _ = w.hide(); } }
+    err
+}
+fn start_game(g: &Game) -> Option<String> {
+    let args = play::split_args(&g.launch_args);
     if let Some(l) = &g.launch {
         if let Some(u) = &l.uri { return tauri_plugin_opener::open_url(u, None::<&str>).err().map(|e| e.to_string()) }
         if let Some(c) = l.cmd.as_ref().filter(|c| Path::new(c).exists()) {
-            return std::process::Command::new(c).args(&l.args).spawn().err().map(|e| e.to_string());
+            return std::process::Command::new(c).args(&l.args).args(&args).spawn().err().map(|e| e.to_string());
         }
     }
     if !Path::new(&g.exe).exists() { return Some("The game file was moved or deleted. Remove it and add it again.".into()) }
+    let dir = Path::new(&g.exe).parent().map(|p| p.to_path_buf());
+    if g.run_as_admin {
+        // Windows asks for permission (UAC) itself
+        let q = |s: &str| format!("'{}'", s.replace('\'', "''"));
+        let list = if args.is_empty() { String::new() } else { format!(" -ArgumentList {}", args.iter().map(|a| q(&format!("\"{a}\""))).collect::<Vec<_>>().join(",")) };
+        let wd = dir.as_ref().map(|d| format!(" -WorkingDirectory {}", q(&d.to_string_lossy()))).unwrap_or_default();
+        let cmd = format!("Start-Process -FilePath {} -Verb RunAs{}{}", q(&g.exe), list, wd);
+        return std::process::Command::new("powershell").args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &cmd]).spawn().err().map(|e| e.to_string());
+    }
+    if !args.is_empty() {
+        let mut c = std::process::Command::new(&g.exe);
+        c.args(&args); if let Some(d) = &dir { c.current_dir(d); }
+        return c.spawn().err().map(|e| e.to_string());
+    }
     tauri_plugin_opener::open_path(&g.exe, None::<&str>).err().map(|e| e.to_string())
 }
 #[tauri::command]
@@ -446,7 +554,21 @@ fn game_update(core: C<'_>, id: String, patch: Value) {
         if let Some(n) = patch["name"].as_str().map(str::trim).filter(|s| !s.is_empty()) { g.name = n.chars().take(120).collect() }
         if let Some(p) = patch["proc"].as_str().map(str::trim).filter(|s| !s.is_empty()) { g.proc_ = p.to_lowercase().chars().take(300).collect() }
         if let Some(f) = patch["fav"].as_bool() { g.fav = f }
-        if let Some(f) = patch["pinned"].as_bool() { g.pinned = f }
+        if let Some(f) = patch["pinned"].as_bool() { g.pinned = f; if !f { g.pin_order = 0 } }
+        if let Some(f) = patch["hidden"].as_bool() { g.hidden = f }
+        if let Some(s) = patch["launchArgs"].as_str() { g.launch_args = s.chars().take(500).collect() }
+        if let Some(f) = patch["runAsAdmin"].as_bool() { g.run_as_admin = f }
+        if let Some(f) = patch["hideOnLaunch"].as_bool() { g.hide_on_launch = f }
+        if let Some(n) = patch["limitMin"].as_i64() { g.limit_min = n.clamp(0, 24 * 60); g.limit_day = 0 }
+    }
+    core.mark(); core.notify();
+}
+/// the sidebar order you dragged the pinned games into
+#[tauri::command]
+fn pins_order(core: C<'_>, ids: Vec<String>) {
+    {
+        let mut db = core.db.lock().unwrap();
+        for g in db.games.iter_mut() { if let Some(i) = ids.iter().position(|x| x == &g.id) { g.pin_order = i as i64 + 1 } }
     }
     core.mark(); core.notify();
 }
@@ -564,6 +686,13 @@ fn app_set(core: C<'_>, key: String, val: Value) {
             "lastSeenVersion" => s.last_seen_version = val.as_str().unwrap_or("").chars().take(20).collect(),
             "reduceMotion" => { let v = val.as_str().unwrap_or("system"); if ["system", "on", "off"].contains(&v) { s.reduce_motion = v.into() } }
             "sounds" => s.sounds = val.as_bool().unwrap_or(false),
+            "accent" => { let v = val.as_str().unwrap_or("white"); if ["white", "violet", "blue", "green", "pink", "orange"].contains(&v) { s.accent = v.into() } }
+            "language" => { let v = val.as_str().unwrap_or("auto"); if ["auto", "en", "fr"].contains(&v) { s.language = v.into() } }
+            "widget" => s.widget = val.as_bool().unwrap_or(false),
+            "notifyDownloads" => s.notify_downloads = val.as_bool().unwrap_or(true),
+            "weeklyRecap" => s.weekly_recap = val.as_bool().unwrap_or(true),
+            "libView" => { let v = val.as_str().unwrap_or("grid"); if ["grid", "list"].contains(&v) { s.lib_view = v.into() } }
+            "cardSize" => s.card_size = val.as_i64().unwrap_or(150).clamp(110, 230),
             "settingsIcon" => { let v = val.as_str().unwrap_or("cog"); if ["cog", "sliders", "dots", "pencil", "none"].contains(&v) { s.settings_icon = v.into() } }
             "steamApiKey" => { s.steam_api_key = val.as_str().unwrap_or("").chars().filter(|c| c.is_ascii_alphanumeric()).take(40).collect(); *core.friends.lock().unwrap() = None; }
             _ => {}
@@ -629,8 +758,10 @@ async fn refresh_owned(core: &Arc<Core>, force: bool) -> (Vec<libraries::Account
         }
     }
     borrow_covers(core, &games).await;
+    let at = now_ms();
+    core.db.lock().unwrap().owned_cache = Some((at, accounts.clone(), games.clone()));
     core.mark();
-    *core.owned.lock().unwrap() = Some((now_ms(), accounts.clone(), games.clone()));
+    *core.owned.lock().unwrap() = Some((at, accounts.clone(), games.clone()));
     (accounts, games)
 }
 /// games without a portrait cover (HoYoverse, launchers…) borrow the one from your Steam / Epic library
@@ -651,7 +782,18 @@ async fn borrow_covers(core: &Arc<Core>, games: &[libraries::Owned]) {
 #[tauri::command]
 async fn owned_get(core: C<'_>, force: bool) -> R<Value> {
     let core = core.inner().clone();
-    let (accounts, mut games) = refresh_owned(&core, force).await;
+    let cached = core.owned.lock().unwrap().clone();
+    let (accounts, mut games) = match cached {
+        // show what we had straight away; fetch the fresh list behind it
+        Some((at, a, g)) if !force => {
+            if now_ms() - at > 10 * 60_000 && !core.owned_busy.swap(true, Ordering::SeqCst) {
+                let c = core.clone();
+                tauri::async_runtime::spawn(async move { refresh_owned(&c, true).await; c.owned_busy.store(false, Ordering::SeqCst); let _ = c.app.emit("owned:changed", ()); });
+            }
+            (a, g)
+        }
+        _ => refresh_owned(&core, force).await,
+    };
     {
         let db = core.db.lock().unwrap();
         for o in games.iter_mut() {
@@ -887,6 +1029,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .setup(|app| {
@@ -919,7 +1062,9 @@ fn main() {
                 update: Mutex::new(json!({ "state": "idle" })), pending: Mutex::new(None), presence: presence::Presence::start(),
                 owned: Mutex::new(None), last_scan: Mutex::new(vec![]), test_until: Mutex::new(0), friends: Mutex::new(None),
                 sem: tokio::sync::Semaphore::new(3), auto_at: Mutex::new(now_ms() + 20_000), profile_dir: dir.join("profile"), dir: dir.clone(),
+                owned_busy: AtomicBool::new(false),
             });
+            { let oc = core.db.lock().unwrap().owned_cache.clone(); *core.owned.lock().unwrap() = oc; }
             // let the webview load this library's art wherever the data folder lives
             let _ = app.asset_protocol_scope().allow_directory(&core.art, true);
             let _ = std::fs::create_dir_all(&core.profile_dir);
@@ -977,6 +1122,7 @@ fn main() {
         })
         .on_window_event(|w, ev| {
             if let WindowEvent::CloseRequested { api, .. } = ev {
+                if w.label() != "main" { return } // the session widget just closes
                 let core = w.app_handle().state::<Arc<Core>>().inner().clone();
                 if core.db.lock().unwrap().settings.close_to_tray { api.prevent_close(); let _ = w.hide(); } else { quit(&core) }
             }
@@ -986,7 +1132,8 @@ fn main() {
             art_search, art_apply, art_refetch, art_custom, stats_screenshots, app_settings, app_set, presence_test, details_get,
             col_create, col_rename, col_delete, col_toggle, owned_get, owned_open, friends_get, save_card, update_check, update_install, open_link, image_data,
             news_get, downloads_get, store_info_get, profile_set, profile_pick, profile_clear,
-            log_write, backups_list, backup_create, backup_restore, report_problem, open_issue, open_logs, app_ready
+            log_write, backups_list, backup_create, backup_restore, report_problem, open_issue, open_logs, app_ready,
+            pins_order, achievements_get, game_screenshots, os_notify, widget_close
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nightfall");

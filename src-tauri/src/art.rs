@@ -348,3 +348,15 @@ pub async fn enrich(mut g: Game, art_dir: PathBuf, lookup_name: bool) -> Game {
     g.art_ver = now_ms();
     g
 }
+
+#[cfg(test)]
+mod tests {
+    use super::clean_title;
+    #[test]
+    fn tidies_launcher_names() {
+        assert_eq!(clean_title("Roblox Player"), "Roblox");
+        assert_eq!(clean_title("Riot Client"), "Riot");
+        assert_eq!(clean_title("  Fortnite  "), "Fortnite");
+        assert_eq!(clean_title("Player"), "Player"); // never empties a name
+    }
+}

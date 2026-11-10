@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="more.css">
 <link rel="stylesheet" href="polish.css">
 <link rel="stylesheet" href="pro.css">
+<link rel="stylesheet" href="more26.css">
 </head>
 <body>
 <div class="splash" id="splash" aria-hidden="true"><div class="sp-in"><img src="icon.png" alt=""><b>Nightfall</b><i class="sp-bar"><i></i></i></div></div>
@@ -101,6 +102,7 @@
         <div class="hero-stats">
           <div class="hstat"><div class="v"><span id="hTotal">0h</span></div><div class="k">Total played</div></div>
           <div class="hstat"><div class="v"><span id="hSessions">0</span></div><div class="k">Sessions</div></div>
+          <div class="hstat" id="hAchBox" hidden><div class="v"><span id="hAch">0/0</span></div><div class="k">Achievements</div></div>
           <div class="hstat" id="hSteamBox" hidden><div class="v"><span id="hSteam">0h</span></div><div class="k">On Steam</div></div>
         </div>
         <div class="hero-copy">
@@ -124,9 +126,11 @@
           <div class="d-facts" id="dFacts"></div>
         </div>
         <div class="panel scroll-panel">
-          <div class="row-head"><div class="p-tabs" id="dTabs"><button class="on" data-t="sessions">Recent sessions</button><button data-t="matches" hidden>Matches</button></div><span class="muted" id="dTabSub"></span></div>
+          <div class="row-head"><div class="p-tabs" id="dTabs"><button class="on" data-t="sessions">Recent sessions</button><button data-t="matches" hidden>Matches</button><button data-t="achievements" hidden>Achievements</button><button data-t="shots" hidden>Screenshots</button></div><span class="muted" id="dTabSub"></span></div>
           <ol class="d-sessions" id="dSessions"></ol>
           <ol class="d-matches" id="dMatches" hidden></ol>
+          <div class="d-ach" id="dAch" hidden></div>
+          <div class="d-shots" id="dShots" hidden></div>
         </div>
         <div class="panel scroll-panel" id="dSubPanel" hidden>
           <div class="row-head"><h2 id="dSubTitle">Experiences</h2><span class="muted" id="dSubSrc"></span></div>
@@ -208,6 +212,9 @@
             <option value="name">Name</option>
           </select>
           <input id="avQ" type="search" placeholder="Search your games" autocomplete="off">
+          <button class="btn btn-ghost sm" id="avHidden" hidden><span>Hidden</span></button>
+          <input type="range" id="avSize" min="110" max="230" step="10" aria-label="Cover size" title="Cover size">
+          <div class="seg-mini" id="avView"><button data-v="grid" aria-label="Grid" title="Grid"></button><button data-v="list" aria-label="List" title="List"></button></div>
           <button class="btn btn-ghost sm" id="avRefresh"><span>Refresh</span><span class="ic" data-icon="refresh"></span></button>
         </div>
       </div>
@@ -237,6 +244,8 @@
           <button data-s="library"><span class="ic" data-icon="grid"></span>Library</button>
           <button data-s="discord"><span class="ic" data-icon="chat"></span>Discord</button>
           <button data-s="general"><span class="ic" data-icon="power"></span>Startup</button>
+          <button data-s="look"><span class="ic" data-icon="pencil"></span>Appearance</button>
+          <button data-s="notif"><span class="ic" data-icon="clock"></span>Notifications</button>
           <button data-s="access"><span class="ic" data-icon="sparkle"></span>Accessibility</button>
           <button data-s="backups"><span class="ic" data-icon="hdd"></span>Backups</button>
           <button data-s="updates"><span class="ic" data-icon="refresh"></span>Updates</button>
@@ -287,6 +296,26 @@
           <div class="st-card">
             <label class="s-row toggle"><div><b>Start with Windows</b><small>Opens hidden in the tray so tracking never misses a session.</small></div><input type="checkbox" id="sLogin"></label>
             <label class="s-row toggle"><div><b>Keep tracking when the window is closed</b><small>Closing hides Nightfall to the tray instead of quitting.</small></div><input type="checkbox" id="sTray"></label>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-look">
+          <header><h2>Appearance</h2><p>Colours and language.</p></header>
+          <div class="st-card">
+            <div class="s-row"><div><b>Accent colour</b><small>Buttons, toggles and highlights.</small></div>
+              <div class="swatches" id="sAccent"><button data-v="white" aria-label="White"></button><button data-v="violet" aria-label="Violet"></button><button data-v="blue" aria-label="Blue"></button><button data-v="green" aria-label="Green"></button><button data-v="pink" aria-label="Pink"></button><button data-v="orange" aria-label="Orange"></button></div></div>
+            <div class="s-row"><div><b>Language</b><small>"Automatic" follows Windows.</small></div>
+              <div class="seg-mini txt" id="sLang"><button data-v="auto">Automatic</button><button data-v="en">English</button><button data-v="fr">Français</button></div></div>
+          </div>
+        </section>
+
+        <section class="st-sec" id="st-notif">
+          <header><h2>Notifications</h2><p>Windows notifications, only for things worth knowing.</p></header>
+          <div class="st-card">
+            <label class="s-row toggle"><div><b>Download finished</b><small>When a game from your stores is ready to play.</small></div><input type="checkbox" id="sNotifDl"></label>
+            <label class="s-row toggle"><div><b>Weekly recap</b><small>On Monday: how much you played last week, and what.</small></div><input type="checkbox" id="sRecap"></label>
+            <label class="s-row toggle"><div><b>Session timer</b><small>A small window in the corner with the time spent in the current game. Shows over borderless and windowed games.</small></div><input type="checkbox" id="sWidget"></label>
+            <p class="help st-note">Daily limits are set per game, in its Game settings.</p>
           </div>
         </section>
 
@@ -364,6 +393,14 @@
         <button class="btn btn-ghost sm" id="mRefetch"><span>Fetch art again</span></button>
       </div>
       <label class="s-row toggle m-pin"><div><b>Pin to sidebar</b><small>Pinned games get a shortcut in the left bar.</small></div><input type="checkbox" id="mPin"></label>
+      <label for="mArgs">Launch options</label>
+      <input id="mArgs" type="text" spellcheck="false" placeholder="Extra arguments, e.g. -windowed -novid">
+      <p class="help">Used when Nightfall starts the game's .exe itself (not through Steam or another launcher).</p>
+      <label class="s-row toggle"><div><b>Run as administrator</b><small>Windows asks for permission each time.</small></div><input type="checkbox" id="mAdmin"></label>
+      <label class="s-row toggle"><div><b>Hide Nightfall when the game starts</b><small>It keeps tracking from the tray.</small></div><input type="checkbox" id="mHideOnLaunch"></label>
+      <div class="s-row"><div><b>Daily limit</b><small>A gentle reminder once you've played this long in a day.</small></div>
+        <select id="mLimit"><option value="0">Off</option><option value="30">30 min</option><option value="60">1 h</option><option value="90">1 h 30</option><option value="120">2 h</option><option value="180">3 h</option><option value="240">4 h</option></select></div>
+      <label class="s-row toggle"><div><b>Hide from library</b><small>Kept with its play time. Find it again under Library → Hidden.</small></div><input type="checkbox" id="mHidden"></label>
       <label for="mNewCol">Collections</label>
       <div class="col-list" id="mCols"></div>
       <div class="row"><input id="mNewCol" type="text" placeholder="New collection, e.g. Co-op with friends" maxlength="40"><button class="btn btn-ghost sm" id="mAddCol"><span>Create</span></button></div>
@@ -469,5 +506,7 @@
 <script src="profile.js"></script>
 <script src="news.js"></script>
 <script src="pro.js"></script>
+<script src="more26.js"></script>
+<script src="i18n.js"></script>
 </body>
 </html>

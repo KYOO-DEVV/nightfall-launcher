@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nightfall session</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#111114;color:#f4f4f6;font-family:"Manrope",system-ui,"Segoe UI",sans-serif;overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased}
+.w{height:100%;display:flex;align-items:center;gap:11px;padding:0 10px 0 12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent)}
+.ic{width:34px;height:34px;flex:none;border-radius:8px;background:#1d1d22 center/contain no-repeat;position:relative}
+.ic::after{content:"";position:absolute;right:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px #111114;animation:p 1.8s ease-in-out infinite}
+@keyframes p{50%{opacity:.4}}
+.tx{flex:1;min-width:0}
+.tx small{display:block;font-size:9.5px;font-weight:700;color:#8b8b95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx b{display:block;font:800 19px "Plus Jakarta Sans","Manrope",sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+button{width:22px;height:22px;flex:none;border:0;border-radius:6px;background:transparent;color:#8b8b95;cursor:pointer;display:grid;place-items:center;font:700 13px system-ui}
+button:hover{background:rgba(255,255,255,.08);color:#fff}
+</style>
+</head>
+<body>
+<div class="w" data-tauri-drag-region>
+  <span class="ic" id="ic" data-tauri-drag-region></span>
+  <div class="tx" data-tauri-drag-region><small id="nm" data-tauri-drag-region>Nightfall</small><b id="tm" data-tauri-drag-region>0:00:00</b></div>
+  <button id="x" title="Turn off the session timer" aria-label="Turn off the session timer">✕</button>
+</div>
+<script src="widget.js"></script>
+</body>
+</html>

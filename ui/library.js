@@ -12,7 +12,7 @@ function mineCard(g) {
   el.className = 'av-card installed';
   el.tabIndex = 0;
   el.innerHTML = `<div class="av-img">${tallArt(g)}
-      <span class="store mine">${esc(STORE_LABEL[g.source] || 'PC')}</span>${g.fav ? `<span class="fav-dot">${ICON.bookmark}</span>` : ''}${g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
+      <span class="store mine">${esc(STORE_LABEL[g.source] || 'PC')}</span>${state.newSince && g.addedAt > state.newSince ? '<span class="new-badge">New</span>' : ''}${g.fav ? `<span class="fav-dot">${ICON.bookmark}</span>` : ''}${g.open ? '<span class="live-dot">Playing</span>' : ''}</div>
     <div class="av-meta"><b title="${esc(g.name)}">${esc(g.name)}</b><small>${total(g) ? fmt(total(g)) + ' played' : 'Not played yet'}${lastPlayed(g) ? ' · ' + ago(lastPlayed(g)) : ''}</small></div>
     <div class="av-btns"><button class="btn btn-solid sm av-btn">${g.open ? 'Running' : 'Play'}</button>${setIcon() ? `<button class="btn btn-ghost sm icon-only av-more" aria-label="Game settings" title="Game settings">${setIcon()}</button>` : ''}</div>`;
   el.querySelector('.av-btn').onclick = (e) => { e.stopPropagation(); launch(g); };
@@ -48,6 +48,8 @@ function paintCardProgress(el) {
   const box = el.querySelector('.av-img'), btn = el.querySelector('.av-btn');
   if (!box || !btn) return;
   if (!d) {
+    const done = state.justDone && state.justDone[el.dataset.key];
+    if (done && now() - done < 8000 && !box.classList.contains('done')) { box.classList.add('done'); setTimeout(() => box.classList.remove('done'), 1600); }
     if (box.classList.contains('dl')) { box.classList.remove('dl', 'paused', 'indet'); box.querySelector('.cv-fill')?.remove(); }
     if (btn.dataset.dl) { btn.textContent = 'Install'; delete btn.dataset.dl; }
     return;
@@ -81,6 +83,7 @@ renderers.all = async (force) => {
   const sort = $('#avSort').value;
   const grid = $('#avGrid');
   const showChips = !!(lib.settings && lib.settings.showFilters);
+  if (renderers.libLayout) renderers.libLayout();
   $('#avChips').hidden = !showChips;
   if (!showChips) state.filter = 'all';
   if (state.libTab === 'mine') {
@@ -88,7 +91,7 @@ renderers.all = async (force) => {
     $('#avEyebrow').textContent = 'On this PC';
     $('#avSub').textContent = `${lib.games.length} ${lib.games.length === 1 ? 'game' : 'games'} installed and tracked · ${lib.games.filter((g) => g.fav).length} bookmarked · ${(lib.collections || []).length} collections`;
     const cols = lib.collections || [];
-    if (state.filter !== 'all' && state.filter !== 'fav' && !cols.some((c) => c.id === state.filter)) state.filter = 'all';
+    if (state.filter !== 'all' && state.filter !== 'fav' && state.filter !== 'hidden' && !cols.some((c) => c.id === state.filter)) state.filter = 'all';
     const chip = (k, label, n) => `<button class="chip ${state.filter === k ? 'on' : ''}" data-f="${esc(k)}">${label}${n != null ? `<i>${n}</i>` : ''}</button>`;
     $('#avChips').innerHTML = chip('all', 'All', lib.games.length) + chip('fav', ICON.bookmark + ' Bookmarks', lib.games.filter((g) => g.fav).length)
       + cols.map((c) => chip(c.id, esc(c.name), c.games.filter(gameById).length)).join('') + '<button class="chip add" id="chipNew">+ New collection</button>';
@@ -100,17 +103,22 @@ renderers.all = async (force) => {
       i.onblur = () => setTimeout(() => renderers.all(true), 150);
     };
     let list = ordered(sort);
+    const hiddenN = (lib.allGames || []).filter((g) => g.hidden).length;
+    $('#avHidden').hidden = !hiddenN && state.filter !== 'hidden';
+    $('#avHidden').classList.toggle('on', state.filter === 'hidden');
+    $('#avHidden').firstElementChild.textContent = state.filter === 'hidden' ? 'Back to all games' : `Hidden · ${hiddenN}`;
+    if (state.filter === 'hidden') list = (lib.allGames || []).filter((g) => g.hidden);
     if (state.filter === 'fav') list = list.filter((g) => g.fav);
     else { const c = cols.find((x) => x.id === state.filter); if (c) list = list.filter((g) => c.games.includes(g.id)); }
     if (qv) list = list.filter((g) => g.name.toLowerCase().includes(qv));
-    const key = 'mine' + state.filter + sort + qv + (lib.settings && lib.settings.settingsIcon) + list.map((g) => [g.id, coverOf(g), g.fav, !!g.open, Math.floor(total(g) / 6e4)].join()).join(';');
+    const key = 'mine' + state.filter + sort + qv + (lib.settings && lib.settings.settingsIcon) + state.newSince + list.map((g) => [g.id, coverOf(g), g.fav, !!g.open, Math.floor(total(g) / 6e4)].join()).join(';');
     if (!force && key === avKey) return; avKey = key;
     grid.innerHTML = list.length ? '' : `<div class="row-empty">${state.filter === 'fav' ? 'Bookmark a game on its page to add it here.' : state.filter !== 'all' ? 'This collection is empty. Add games from their Game settings.' : 'No games match.'}</div>`;
     const frag = document.createDocumentFragment(); list.forEach((g) => frag.appendChild(mineCard(g))); grid.appendChild(frag);
     return;
   }
   // your stores
-  $('#avSort').hidden = true; $('#avRefresh').hidden = false;
+  $('#avSort').hidden = true; $('#avRefresh').hidden = false; $('#avHidden').hidden = true;
   if (!state.owned || force === 'refresh') {
     $('#avSub').textContent = 'Reading your store libraries…';
     if (!grid.querySelector('.av-card')) { grid.innerHTML = skelCards(12); avKey = ''; }

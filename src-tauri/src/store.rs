@@ -83,6 +83,19 @@ pub struct Game {
     pub art_rev: i64,
     /// shown in the sidebar
     pub pinned: bool,
+    /// position among pinned games (0 = after the ordered ones)
+    pub pin_order: i64,
+    /// kept, but out of sight
+    pub hidden: bool,
+    /// extra command-line arguments when Nightfall starts the .exe itself
+    pub launch_args: String,
+    pub run_as_admin: bool,
+    /// hide Nightfall to the tray once the game starts
+    pub hide_on_launch: bool,
+    /// daily reminder after this many minutes (0 = off)
+    pub limit_min: i64,
+    /// the day (local midnight) the reminder last fired
+    pub limit_day: i64,
     #[serde(skip)]
     pub live: Option<Live>,
 }
@@ -108,11 +121,25 @@ pub struct Settings {
     pub reduce_motion: String,
     /// a soft sound when a game launches
     pub sounds: bool,
+    /// white, violet, blue, green, pink or orange
+    pub accent: String,
+    /// "auto" (follow Windows), "en" or "fr"
+    pub language: String,
+    /// a small always-on-top window with the session timer
+    pub widget: bool,
+    pub notify_downloads: bool,
+    pub weekly_recap: bool,
+    pub last_recap_week: String,
+    /// library layout: "grid" or "list", and cover width in pixels
+    pub lib_view: String,
+    pub card_size: i64,
 }
 impl Default for Settings {
     fn default() -> Self {
         Settings { close_to_tray: true, discord_enabled: false, discord_client_id: String::new(), discord_idle: false, auto_add_installed: true, steam_api_key: String::new(),
-            show_filters: false, settings_icon: "cog".into(), onboarded: false, last_seen_version: String::new(), reduce_motion: "system".into(), sounds: false }
+            show_filters: false, settings_icon: "cog".into(), onboarded: false, last_seen_version: String::new(), reduce_motion: "system".into(), sounds: false,
+            accent: "white".into(), language: "auto".into(), widget: false, notify_downloads: true, weekly_recap: true, last_recap_week: String::new(),
+            lib_view: "grid".into(), card_size: 150 }
     }
 }
 
@@ -202,6 +229,8 @@ pub struct Db {
     pub profile: Profile,
     /// set once the 1.x (Electron) library has been imported
     pub migrated: bool,
+    /// your store libraries as last read, so the Your stores tab opens instantly
+    pub owned_cache: Option<(i64, Vec<crate::libraries::Account>, Vec<crate::libraries::Owned>)>,
 }
 
 impl Db {

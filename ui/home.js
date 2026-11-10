@@ -109,7 +109,7 @@ renderers.home = (force) => {
   const bn = $('#hmBanner');
   bn.style.background = artBg(heroOf(top), top);
   bn.innerHTML = `<div class="b-logo">${logoHtml(top)}</div>
-    <div class="b-meta">${top.open ? `<span class="live" data-live="${top.id}">● ${esc(metaLine(top))}</span>` : `<span>${lastPlayed(top) ? 'Last played ' + ago(lastPlayed(top)) : 'Ready to play'}</span><span>${fmt(total(top))} total</span><span>${top.sessions.length} sessions</span>`}</div>
+    <div class="b-meta">${top.open ? `<span class="live" data-live="${top.id}">● ${esc(metaLine(top))}</span>` : `<span>${lastPlayed(top) ? 'Last played ' + ago(lastPlayed(top)) : 'Ready to play'}</span>${within(top, weekStart(), Infinity) >= 6e4 ? `<span>${fmt(within(top, weekStart(), Infinity))} this week</span>` : ''}<span>${fmt(total(top))} total</span><span>${top.sessions.length} sessions</span>`}</div>
     <div class="actions"><button class="btn btn-solid ${top.open ? 'running' : ''}" id="hmPlay"><span>${top.open ? 'Running' : recent.length ? 'Continue' : 'Play'}</span><span class="ic">${ICON.play}</span></button></div>`;
   bn.onclick = (e) => { if (e.target.closest('#hmPlay')) return launch(top); select(top.id); };
   $('#hmSide').innerHTML = rest.map((g) => `<div class="side-item" data-id="${g.id}" tabindex="0" role="button">
@@ -144,7 +144,7 @@ renderers.home = (force) => {
   /* this week */
   const days = [...Array(7)].map((_, i) => gs.reduce((t, g) => t + within(g, a + i * DAY, a + (i + 1) * DAY), 0));
   const dmax = Math.max(...days, 1), today = Math.floor((now() - a) / DAY);
-  $('#hmWeek').innerHTML = days.map((ms, i) => `<div class="${i === today ? 'today ' : ''}${ms > 0 ? 'has' : ''}"><em>${ms >= 6e4 ? fmt(ms) : ''}</em><i style="height:${Math.max(3, Math.round((ms / dmax) * 100))}%"></i>${['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</div>`).join('');
+  $('#hmWeek').innerHTML = days.map((ms, i) => `<div class="${i === today ? 'today ' : ''}${ms > 0 ? 'has' : ''}"><em>${ms >= 6e4 ? fmt(ms) : ''}</em><i style="height:${Math.max(3, Math.round((ms / dmax) * 100))}%"></i>${(window.FR ? ['L', 'M', 'M', 'J', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'])[i]}</div>`).join('');
   let sess = 0, sessMs = 0;
   for (const g of gs) {
     for (const x of g.sessions) if (x.e > a) { sess++; sessMs += x.e - Math.max(x.s, a); }

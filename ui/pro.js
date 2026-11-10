@@ -15,6 +15,18 @@ document.addEventListener('contextmenu', (e) => { if (!lib.debug && !e.target.cl
 
 /* ---------------- changelog ---------------- */
 const CHANGELOG = [
+  { v: '2.6.0', date: 'November 2026', title: 'Your games, your way', items: [
+    'Each game page takes the colour of its artwork.',
+    'The Play button shows the game starting, then a live session timer.',
+    'Steam achievements on game pages, read from your PC with no account needed.',
+    'Screenshots for each game, from Steam, Xbox Game Bar and NVIDIA.',
+    'Launch options per game: extra arguments, run as administrator, hide Nightfall when the game starts.',
+    'Daily limits per game with a gentle reminder, and a weekly recap every Monday.',
+    'A Windows notification and a flash on the cover when a download finishes.',
+    'Library in grid or list view, adjustable cover size, a New badge, hidden games and drag-to-reorder pinned games.',
+    'Accent colours and a full French translation.',
+    'Your stores open instantly, and an optional session timer stays on top of your game.',
+  ] },
   { v: '2.5.0', date: 'November 2026', title: 'Built to be relied on', items: [
     'A welcome tour the first time you open Nightfall: it finds your games, sets things up and creates your profile in under a minute.',
     'This page: see what changed after every update.',

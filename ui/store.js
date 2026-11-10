@@ -192,6 +192,8 @@ async function pollDownloads() {
   for (const d of before) {
     if (!state.downloads.some((x) => x.key === d.key) && (d.total ? d.done / d.total > 0.9 : true)) {
       toast(`${d.name} finished installing`);
+      state.justDone = state.justDone || {}; state.justDone[d.key] = now();
+      if (lib.settings && lib.settings.notifyDownloads !== false) nf.notify(`${d.name} is ready to play`, `Finished installing from ${STORE_LABEL[d.store] || d.store}.`);
       setTimeout(async () => { try { state.owned = await nf.owned(true); if (state.view === 'all') renderers.all(true); } catch {} }, 4000);
     }
   }

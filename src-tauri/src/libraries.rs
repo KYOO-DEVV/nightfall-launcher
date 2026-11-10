@@ -10,8 +10,8 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 
-#[derive(Serialize, Clone, Default, Debug)]
-#[serde(rename_all = "camelCase")]
+#[derive(Serialize, serde::Deserialize, Clone, Default, Debug)]
+#[serde(rename_all = "camelCase", default)]
 pub struct Owned {
     pub store: String,
     pub id: String,
@@ -30,7 +30,8 @@ pub struct Owned {
     pub game_id: Option<String>,
 }
 
-#[derive(Serialize, Clone, Default, Debug)]
+#[derive(Serialize, serde::Deserialize, Clone, Default, Debug)]
+#[serde(default)]
 pub struct Account { pub store: String, pub name: String, pub id: Option<String>, pub games: usize }
 
 /* ---------------- Steam ---------------- */
